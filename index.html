@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#07090f"/>
+<title>TT Live Commission</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#07090f;--bg2:#0d1117;--bg3:#131a26;--bg4:#1a2235;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+  --text:#eef2ff;--text2:#8b9dc3;--text3:#404e6a;
+  --red:#ff2d55;--red2:#ff6b35;--redbg:rgba(255,45,85,.12);
+  --blue:#38bdf8;--bluebg:rgba(56,189,248,.12);
+  --green:#2dff9b;--greenbg:rgba(45,255,155,.1);
+  --yellow:#ffd166;--yellowbg:rgba(255,209,102,.1);
+  --purple:#b69fff;
+  --nav:72px;--safe:env(safe-area-inset-bottom,0px);
+  --radius:16px;--radius-sm:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--text);font-family:'Sarabun',sans-serif;height:100%;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+::-webkit-scrollbar{width:0}
+
+/* LOGIN */
+#login-screen{
+  position:fixed;inset:0;z-index:1000;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 24px;
+  background-image:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(255,45,85,.15),transparent);
+}
+.login-logo{width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,var(--red),var(--red2));display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:20px;box-shadow:0 0 40px rgba(255,45,85,.4);animation:logoPulse 3s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 0 40px rgba(255,45,85,.4)}50%{box-shadow:0 0 60px rgba(255,45,85,.6)}}
+.login-title{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--text3);margin-bottom:36px}
+.login-box{width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px}
+.login-label{font-size:12px;color:var(--text2);margin-bottom:5px;display:block;font-weight:600}
+.login-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px 16px;color:var(--text);font-size:16px;font-family:'Sarabun',sans-serif;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.login-input:focus{border-color:var(--red)}
+.btn-login{width:100%;background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;border:none;border-radius:var(--radius-sm);padding:16px;font-size:17px;font-weight:700;font-family:'Sarabun',sans-serif;cursor:pointer;box-shadow:0 8px 24px rgba(255,45,85,.35);transition:transform .15s;margin-top:4px}
+.btn-login:active{transform:scale(.97)}
+.login-error{color:var(--red);font-size:13px;text-align:center;min-height:18px}
+.login-hint{font-size:11px;color:var(--text3);text-align:center;margin-top:12px;line-height:1.7}
+
+/* TOPBAR */
+.topbar{flex-shrink:0;padding:52px 18px 12px;background:linear-gradient(180deg,var(--bg) 0%,transparent 100%);display:flex;align-items:center;justify-content:space-between;position:relative;z-index:10}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--red),var(--red2));display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 14px rgba(255,45,85,.4);flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.topbar-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.avatar-sm{width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--red);cursor:pointer}
+.avatar-ph-sm{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--red2));display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid var(--red);cursor:pointer;flex-shrink:0}
+
+/* READONLY BANNER */
+.readonly-banner{
+  background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);
+  border-radius:var(--radius-sm);padding:10px 14px;
+  display:flex;align-items:center;gap:8px;margin-bottom:14px;
+  font-size:12px;color:var(--yellow);
+}
+
+/* PAGES */
+.pages{flex:1;overflow:hidden;position:relative}
+.page{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px calc(var(--nav) + var(--safe) + 16px);opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .25s,transform .25s}
+.page.active{opacity:1;transform:translateY(0);pointer-events:all}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav) + var(--safe));padding-bottom:var(--safe);padding-top:8px;background:rgba(7,9,15,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;align-items:flex-start;z-index:100}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer;border:none;background:none;color:var(--text3);font-family:'Sarabun',sans-serif;font-size:10px;font-weight:500;transition:color .2s;position:relative}
+.nav-btn .ni{font-size:21px;transition:transform .2s}
+.nav-btn.active{color:var(--red)}
+.nav-btn.active .ni{transform:scale(1.15)}
+.nav-dot{position:absolute;top:3px;width:5px;height:5px;background:var(--red);border-radius:50%;opacity:0;transition:opacity .2s}
+.nav-btn.active .nav-dot{opacity:1}
+
+/* CARDS */
+.card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.card-p{padding:16px}
+.sec-title{font-size:12px;font-weight:600;color:var(--text2);margin:14px 0 8px;display:flex;align-items:center;gap:5px}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.r::after{background:linear-gradient(90deg,var(--red),var(--red2))}
+.kpi.b::after{background:linear-gradient(90deg,var(--blue),#818cf8)}
+.kpi.g::after{background:linear-gradient(90deg,var(--green),#06d6a0)}
+.kpi.y::after{background:linear-gradient(90deg,var(--yellow),#f9844a)}
+.kpi-ico{font-size:18px;margin-bottom:6px}
+.kpi-lbl{font-size:10px;color:var(--text3);margin-bottom:3px}
+.kpi-val{font-size:20px;font-weight:700;letter-spacing:-.5px;font-family:'IBM Plex Mono',monospace}
+.kpi.r .kpi-val{color:var(--red)}.kpi.b .kpi-val{color:var(--blue)}.kpi.g .kpi-val{color:var(--green)}.kpi.y .kpi-val{color:var(--yellow)}
+
+/* INPUTS */
+.lbl{font-size:12px;color:var(--text3);margin-bottom:5px;display:block;font-weight:500}
+.inp{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 14px;color:var(--text);font-size:15px;font-family:'Sarabun',sans-serif;outline:none;-webkit-appearance:none;transition:border-color .2s}
+.inp:focus{border-color:var(--red)}
+.inp::placeholder{color:var(--text3)}
+.inp:disabled{opacity:.45;cursor:not-allowed;background:var(--bg3)}
+select.inp{cursor:pointer}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* BUTTONS */
+.btn-primary{width:100%;background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;border:none;border-radius:var(--radius-sm);padding:14px;font-size:15px;font-weight:700;font-family:'Sarabun',sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(255,45,85,.3);transition:transform .15s;-webkit-appearance:none}
+.btn-primary:active{transform:scale(.97)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.btn-ghost{background:rgba(255,255,255,.06);border:1px solid var(--border2);color:var(--text2);border-radius:var(--radius-sm);padding:10px 16px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;-webkit-appearance:none}
+.btn-ghost:disabled{opacity:.35;cursor:not-allowed}
+.btn-danger{background:rgba(255,45,85,.12);border:1px solid rgba(255,45,85,.25);color:var(--red);border-radius:8px;padding:5px 12px;font-size:12px;font-family:'Sarabun',sans-serif;cursor:pointer}
+.btn-blue{background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.25);color:var(--blue);border-radius:8px;padding:5px 12px;font-size:12px;font-family:'Sarabun',sans-serif;cursor:pointer}
+.btn-logout{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:rgba(255,45,85,.08);border:1px solid rgba(255,45,85,.2);color:var(--red);border-radius:var(--radius-sm);padding:14px;font-size:15px;font-weight:600;font-family:'Sarabun',sans-serif;cursor:pointer;margin-top:8px}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:20px 16px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;background:var(--bg2)}
+.upload-zone:active{border-color:var(--red);background:var(--redbg)}
+.upload-zone.disabled{opacity:.4;pointer-events:none;cursor:not-allowed}
+
+/* TIME BADGE */
+.time-badge{display:inline-flex;align-items:center;gap:5px;background:var(--bluebg);border:1px solid rgba(56,189,248,.25);color:var(--blue);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;font-family:'IBM Plex Mono',monospace}
+
+/* TIER BAR */
+.tier-bar-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.prog-track{background:rgba(255,255,255,.07);border-radius:5px;height:7px;overflow:hidden;margin-bottom:5px}
+.prog-fill{height:100%;border-radius:5px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.prog-lbs{display:flex;justify-content:space-between;font-size:10px;color:var(--text3)}
+
+/* RECORD ITEMS */
+.record-item{padding:14px 0;border-bottom:1px solid var(--border)}
+.record-item:last-child{border-bottom:none}
+.record-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.record-name{font-size:14px;font-weight:600}
+.record-thumb{width:56px;height:56px;border-radius:10px;object-fit:cover;border:1px solid var(--border2);flex-shrink:0;cursor:pointer}
+.record-thumb-ph{width:56px;height:56px;border-radius:10px;background:var(--bg4);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.stat-chip{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)}
+.stat-chip strong{color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px}
+.record-stats{display:flex;gap:12px;flex-wrap:wrap}
+.badge{display:inline-block;font-size:10px;padding:2px 9px;border-radius:20px;font-weight:600}
+.badge-ok{background:var(--greenbg);color:var(--green)}
+
+/* PROFILE */
+.profile-header{display:flex;flex-direction:column;align-items:center;padding:24px 16px 16px}
+.profile-avatar-wrap{position:relative;margin-bottom:12px}
+.profile-avatar{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--red);display:block}
+.profile-avatar-ph{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--red2));display:flex;align-items:center;justify-content:center;font-size:36px;border:3px solid var(--red)}
+.avatar-edit-btn{position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--red);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+.avatar-edit-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;border-radius:50%}
+.profile-name{font-size:20px;font-weight:800;letter-spacing:-.3px}
+.profile-role{font-size:12px;color:var(--text3);margin-top:2px}
+
+/* DATE NAV */
+.date-nav{display:flex;align-items:center;justify-content:center;gap:16px;padding:8px 0;margin-bottom:12px}
+.date-nav-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text2);-webkit-appearance:none}
+.date-nav-btn:active{background:var(--redbg)}
+.date-pill{background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;-webkit-appearance:none;color:var(--text);font-family:'Sarabun',sans-serif}
+input[type=date].date-pill::-webkit-calendar-picker-indicator{filter:invert(.6);margin-left:4px}
+
+/* CHIP */
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border2);color:var(--text2);background:var(--bg3);transition:all .15s}
+.chip.active{background:var(--redbg);border-color:rgba(255,45,85,.4);color:var(--red)}
+
+/* EMPLOYEE CARDS */
+.emp-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.emp-ava{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);flex-shrink:0}
+.emp-ava-ph{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a2235,#2d3f60);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.emp-info{flex:1;min-width:0}
+.emp-name{font-size:14px;font-weight:700}
+.emp-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.emp-right{text-align:right;flex-shrink:0}
+.emp-rev{font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--green)}
+.emp-comm{font-size:10px;color:var(--text3)}
+.emp-tier{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;margin-top:4px}
+.admin-edit-dot{width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;margin-left:6px;vertical-align:middle}
+
+/* SEARCH */
+.search-wrap{position:relative;margin-bottom:12px}
+.search-inp{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 14px 10px 38px;color:var(--text);font-size:14px;font-family:'Sarabun',sans-serif;outline:none;-webkit-appearance:none}
+.search-inp:focus{border-color:var(--red)}
+.search-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none}
+
+/* USER ROW for admin */
+.user-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.user-row:last-child{border-bottom:none}
+.user-ava{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);flex-shrink:0}
+.user-ava-ph{width:40px;height:40px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:14px;font-weight:600}
+.user-meta{font-size:11px;color:var(--text3);margin-top:1px}
+.user-rev{font-size:13px;font-weight:700;color:var(--green);font-family:'IBM Plex Mono',monospace}
+.user-comm{font-size:10px;color:var(--text3)}
+
+/* LIGHTBOX */
+.lightbox{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.lightbox.open{display:flex}
+.lightbox img{max-width:95vw;max-height:80vh;border-radius:12px;object-fit:contain}
+.lightbox-close{position:absolute;top:48px;right:20px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* TOAST */
+.toast{position:fixed;bottom:calc(var(--nav) + var(--safe) + 10px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--green);color:#000;font-weight:700;font-size:13px;padding:9px 20px;border-radius:20px;white-space:nowrap;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:500}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:12px 0}
+.no-data{text-align:center;padding:32px 0;color:var(--text3);font-size:13px;line-height:1.8}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .35s ease forwards}
+.d1{animation-delay:.04s;opacity:0}.d2{animation-delay:.08s;opacity:0}.d3{animation-delay:.12s;opacity:0}.d4{animation-delay:.16s;opacity:0}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-logo">♪</div>
+  <div class="login-title">TT Live Commission</div>
+  <div class="login-sub">ระบบติดตามค่าคอมไลฟ์ TikTok</div>
+  <div class="login-box">
+    <div><label class="login-label">ชื่อผู้ใช้</label><input class="login-input" id="li-user" type="text" placeholder="admin / user01–user15" autocapitalize="none" autocomplete="off"/></div>
+    <div><label class="login-label">รหัสผ่าน</label><input class="login-input" id="li-pass" type="password" placeholder="••••••"/></div>
+    <div class="login-error" id="li-err"></div>
+    <button class="btn-login" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-hint">Admin: <b>admin</b> / <b>admin123</b><br/>User: <b>user01–user15</b> / <b>user123</b></div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar" id="topbar" style="display:none">
+  <div class="topbar-left">
+    <div class="topbar-icon">♪</div>
+    <div><div class="topbar-title" id="topbar-title">TT Commission</div><div class="topbar-sub" id="topbar-sub">Dashboard</div></div>
+  </div>
+  <div class="topbar-right" id="topbar-avatar"></div>
+</div>
+
+<!-- PAGES -->
+<div class="pages" id="pages" style="display:none">
+
+  <!-- HOME -->
+  <div class="page active" id="page-home">
+    <div class="kpi-grid">
+      <div class="kpi r fu"><div class="kpi-ico">💰</div><div class="kpi-lbl">ยอดขายวันนี้</div><div class="kpi-val" id="h-today-rev">฿0</div></div>
+      <div class="kpi b fu d1"><div class="kpi-ico">🏆</div><div class="kpi-lbl">ค่าคอมวันนี้</div><div class="kpi-val" id="h-today-comm">฿0</div></div>
+      <div class="kpi g fu d2"><div class="kpi-ico">📅</div><div class="kpi-lbl">ยอดรวมเดือนนี้</div><div class="kpi-val" id="h-month-rev">฿0</div></div>
+      <div class="kpi y fu d3"><div class="kpi-ico">🎯</div><div class="kpi-lbl">ค่าคอมสะสม</div><div class="kpi-val" id="h-total-comm">฿0</div></div>
+    </div>
+    <div class="tier-bar-wrap fu d4" id="h-tier-wrap"></div>
+    <div class="sec-title">📊 ยอดขาย 7 วันล่าสุด</div>
+    <div class="card card-p"><canvas id="chart-7d" style="max-height:170px"></canvas></div>
+    <div class="sec-title">🕐 บันทึกล่าสุด</div>
+    <div class="card card-p" id="home-recent"></div>
+  </div>
+
+  <!-- RECORD -->
+  <div class="page" id="page-record">
+
+    <div class="date-nav">
+      <button class="date-nav-btn" onclick="shiftDay(-1)">‹</button>
+      <input type="date" class="date-pill" id="rec-date" oninput="onDateChange()"/>
+      <button class="date-nav-btn" onclick="shiftDay(1)">›</button>
+    </div>
+    <div class="sec-title">🕐 ช่วงเวลาไลฟ์</div>
+    <div class="card card-p" id="sessions-wrap">
+      <div id="sessions-list"></div>
+      <button class="btn-ghost" id="btn-add-session" style="width:100%;margin-top:10px" onclick="addSession()">+ เพิ่มช่วงเวลา</button>
+    </div>
+    <div class="sec-title">📸 หลักฐานการไลฟ์</div>
+    <div class="card card-p">
+      <div id="proof-previews"></div>
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="proof-upload" accept="image/*" multiple onchange="handleProofUpload(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%"/>
+        <div style="font-size:28px;margin-bottom:8px">📷</div>
+        <div style="font-size:13px;color:var(--text2)">แตะเพื่ออัพโหลดรูปหลักฐาน</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">รองรับ JPG, PNG · หลายรูปได้</div>
+      </div>
+    </div>
+    <div class="sec-title">💰 ยอดขายรวมวันนี้</div>
+    <div class="card card-p">
+      <div class="fg"><label class="lbl">ยอดขายรวม (฿)</label><input class="inp" id="rec-revenue" type="number" inputmode="numeric" placeholder="0" oninput="calcDayComm()"/></div>
+      <div class="fg">
+        <label class="lbl" style="display:flex;align-items:center;gap:6px">
+          📱 ค่าคอมที่ได้รับจาก TikTok (฿)
+          <span style="font-size:10px;background:rgba(255,209,102,.15);color:var(--yellow);border:1px solid rgba(255,209,102,.3);border-radius:10px;padding:1px 7px">กรอกเองได้</span>
+        </label>
+        <input class="inp" id="rec-actual-comm" type="number" inputmode="numeric" placeholder="ยอดที่ TikTok โอนเข้าจริง..." style="font-family:'IBM Plex Mono',monospace;font-size:16px" oninput="calcDayComm()"/>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">เปอร์เซ็นต์ค่าคอมจาก TikTok</div>
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <div style="font-size:32px;font-weight:800;color:var(--blue);font-family:'IBM Plex Mono',monospace;line-height:1" id="calc-comm">0<span style="font-size:18px">%</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px" id="calc-tier">กรอกยอดขายและค่าคอม TikTok เพื่อคำนวณ</div>
+      </div>
+      <div class="fg"><label class="lbl">หมายเหตุ</label><input class="inp" id="rec-note" type="text" placeholder="เช่น โปรโมชั่นพิเศษ..."/></div>
+      <button class="btn-primary" id="btn-save-record" onclick="saveRecord()">💾 บันทึกข้อมูลวันนี้</button>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="page" id="page-history">
+
+    <div class="chip-row">
+      <div class="chip active" onclick="filterHistory('all',this)">ทั้งหมด</div>
+      <div class="chip" onclick="filterHistory('thisMonth',this)">เดือนนี้</div>
+      <div class="chip" onclick="filterHistory('last7',this)">7 วัน</div>
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- TEAM (รายชื่อพนักงาน) -->
+  <div class="page" id="page-team">
+    <div class="search-wrap">
+      <span class="search-ico">🔍</span>
+      <input class="search-inp" id="team-search" type="text" placeholder="ค้นหาชื่อหรือ ID..." oninput="renderTeamPage()"/>
+    </div>
+    <div class="chip-row" id="team-filter-chips">
+      <div class="chip active" onclick="filterTeam('all',this)">ทั้งหมด</div>
+      <div class="chip" onclick="filterTeam('bronze',this)">🥉 Bronze</div>
+      <div class="chip" onclick="filterTeam('silver',this)">🥈 Silver</div>
+      <div class="chip" onclick="filterTeam('gold',this)">🥇 Gold</div>
+      <div class="chip" onclick="filterTeam('platinum',this)">💎 Platinum</div>
+    </div>
+    <div id="team-list"></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="page" id="page-admin">
+    <div class="kpi-grid">
+      <div class="kpi r"><div class="kpi-ico">👥</div><div class="kpi-lbl">ผู้ใช้งาน</div><div class="kpi-val" id="adm-users">0</div></div>
+      <div class="kpi g"><div class="kpi-ico">📊</div><div class="kpi-lbl">ยอดรวมทั้งหมด</div><div class="kpi-val" id="adm-total">฿0</div></div>
+    </div>
+    <div class="sec-title">🏆 อันดับยอดขาย</div>
+    <div class="card card-p" id="admin-ranking"></div>
+    <div class="sec-title">📋 รายการทั้งหมด <span style="font-size:10px;color:var(--text3)">(Admin แก้ไขได้)</span></div>
+    <div id="admin-all-records"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="page" id="page-profile">
+    <div class="profile-header">
+      <div class="profile-avatar-wrap">
+        <div id="profile-ava-wrap"></div>
+        <div class="avatar-edit-btn">📷<input type="file" accept="image/*" onchange="handleAvatarUpload(event)"/></div>
+      </div>
+      <div class="profile-name" id="prof-name-display">—</div>
+      <div class="profile-role" id="prof-role-display">—</div>
+    </div>
+    <div class="sec-title">✏️ แก้ไขโปรไฟล์</div>
+    <div class="card card-p">
+      <div class="fg"><label class="lbl">ชื่อ-นามสกุล</label><input class="inp" id="prof-name" type="text" placeholder="ชื่อจริง"/></div>
+      <div class="row2">
+        <div class="fg"><label class="lbl">อายุ</label><input class="inp" id="prof-age" type="number" inputmode="numeric" placeholder="25"/></div>
+        <div class="fg"><label class="lbl">เบอร์โทร</label><input class="inp" id="prof-phone" type="tel" placeholder="08x-xxx-xxxx"/></div>
+      </div>
+      <div class="fg"><label class="lbl">บัญชี TikTok</label><input class="inp" id="prof-tiktok" type="text" placeholder="@username"/></div>
+      <button class="btn-primary" onclick="saveProfile()">บันทึกโปรไฟล์</button>
+    </div>
+    <div class="divider"></div>
+    <div class="sec-title">🔐 เปลี่ยนรหัสผ่าน</div>
+    <div class="card card-p">
+      <div class="fg"><label class="lbl">รหัสผ่านใหม่</label><input class="inp" id="prof-newpass" type="password" placeholder="••••••"/></div>
+      <div class="fg"><label class="lbl">ยืนยันรหัสผ่าน</label><input class="inp" id="prof-confpass" type="password" placeholder="••••••"/></div>
+      <button class="btn-primary" onclick="changePassword()" style="background:linear-gradient(135deg,#6366f1,var(--blue))">เปลี่ยนรหัสผ่าน</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn-logout" onclick="doLogout()">🚪 ออกจากระบบ</button>
+    <div style="height:8px"></div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" id="bottom-nav" style="display:none">
+  <button class="nav-btn active" data-p="home" onclick="switchPage('home')"><div class="nav-dot"></div><span class="ni">🏠</span><span>หน้าหลัก</span></button>
+  <button class="nav-btn" data-p="record" onclick="switchPage('record')"><div class="nav-dot"></div><span class="ni">✏️</span><span>บันทึก</span></button>
+  <button class="nav-btn" data-p="history" onclick="switchPage('history')"><div class="nav-dot"></div><span class="ni">📋</span><span>ประวัติ</span></button>
+  <button class="nav-btn" data-p="team" onclick="switchPage('team')"><div class="nav-dot"></div><span class="ni">👥</span><span>พนักงาน</span></button>
+  <button class="nav-btn" id="admin-nav-btn" data-p="admin" onclick="switchPage('admin')" style="display:none"><div class="nav-dot"></div><span class="ni">👑</span><span>Admin</span></button>
+  <button class="nav-btn" data-p="profile" onclick="switchPage('profile')"><div class="nav-dot"></div><span class="ni">👤</span><span>โปรไฟล์</span></button>
+</nav>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt=""/>
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+const TIERS=[
+  {name:"Bronze",emoji:"🥉",min:0,max:50000,rate:5,color:"#cd7f32",bg:"rgba(205,127,50,.15)"},
+  {name:"Silver",emoji:"🥈",min:50001,max:200000,rate:6,color:"#94a3b8",bg:"rgba(148,163,184,.15)"},
+  {name:"Gold",emoji:"🥇",min:200001,max:500000,rate:7,color:"#f59e0b",bg:"rgba(245,158,11,.15)"},
+  {name:"Platinum",emoji:"💎",min:500001,max:Infinity,rate:10,color:"#38bdf8",bg:"rgba(56,189,248,.15)"},
+];
+function getTier(r){return TIERS.find(t=>r>=t.min&&r<=t.max)||TIERS[0]}
+function calcComm(r){const t=getTier(r);return Math.round(r*t.rate/100)}
+function fmt(n){return"฿"+Math.round(n).toLocaleString("th-TH")}
+function todayStr(){return new Date().toISOString().slice(0,10)}
+function dateLabel(d){return new Date(d+"T00:00:00").toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"})}
+
+// ── DATA ───────────────────────────────────────────────────────────────────
+function initUsers(){
+  if(localStorage.getItem("tt_users"))return;
+  const users={
+    admin:{id:"admin",pass:"admin123",role:"admin",name:"Admin",age:"",phone:"",tiktok:"@admin",avatar:"",records:{},sessions:{},proofs:{}}
+  };
+  for(let i=1;i<=15;i++){
+    const uid="user"+String(i).padStart(2,"0");
+    users[uid]={id:uid,pass:"user123",role:"user",name:`User ${String(i).padStart(2,"0")}`,age:"",phone:"",tiktok:`@user${i}`,avatar:"",records:{},sessions:{},proofs:{}};
+  }
+  localStorage.setItem("tt_users",JSON.stringify(users));
+}
+function getUsers(){return JSON.parse(localStorage.getItem("tt_users")||"{}")}
+function saveUsers(u){localStorage.setItem("tt_users",JSON.stringify(u))}
+function getCurrentUser(){const uid=sessionStorage.getItem("tt_uid");if(!uid)return null;return getUsers()[uid]||null}
+function saveCurrentUser(u){const users=getUsers();users[u.id]=u;saveUsers(users)}
+function isAdmin(){const u=getCurrentUser();return u&&u.role==="admin"}
+initUsers();
+
+// ── AUTH ───────────────────────────────────────────────────────────────────
+function doLogin(){
+  const uid=document.getElementById("li-user").value.trim().toLowerCase();
+  const pass=document.getElementById("li-pass").value;
+  const u=getUsers()[uid];
+  if(!u||u.pass!==pass){document.getElementById("li-err").textContent="ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";return;}
+  document.getElementById("li-err").textContent="";
+  sessionStorage.setItem("tt_uid",uid);
+  showApp(u);
+}
+document.getElementById("li-pass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin()});
+document.getElementById("li-user").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("li-pass").focus()});
+
+function doLogout(){
+  sessionStorage.removeItem("tt_uid");
+  ["topbar","pages","bottom-nav"].forEach(id=>document.getElementById(id).style.display="none");
+  document.getElementById("login-screen").style.display="flex";
+  document.getElementById("li-user").value="";document.getElementById("li-pass").value="";
+}
+
+function showApp(u){
+  document.getElementById("login-screen").style.display="none";
+  document.getElementById("topbar").style.display="flex";
+  document.getElementById("pages").style.display="block";
+  document.getElementById("bottom-nav").style.display="flex";
+  document.getElementById("admin-nav-btn").style.display=u.role==="admin"?"flex":"none";
+  document.getElementById("topbar-title").textContent=u.role==="admin"?"👑 Admin Panel":"TT Commission";
+  document.getElementById("rec-date").value=todayStr();
+  applyReadonlyUI();
+  loadRecordPage();
+  renderHomePage();
+  renderProfilePage();
+  renderTopbarAvatar();
+  renderHistoryPage("all");
+  renderTeamPage();
+  if(u.role==="admin")renderAdminPage();
+  switchPage("home");
+}
+
+window.addEventListener("DOMContentLoaded",()=>{
+  const uid=sessionStorage.getItem("tt_uid");
+  if(uid){const u=getUsers()[uid];if(u)showApp(u);}
+});
+
+// ── READONLY UI ────────────────────────────────────────────────────────────
+function applyReadonlyUI(){
+  // Users can now record their own data, upload proofs, add sessions
+  // Only admin-exclusive: edit/delete other users' data, admin panel
+  // Nothing to disable on record page for users
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────────────────
+const PAGE_LABELS={home:"Dashboard",record:"บันทึกไลฟ์",history:"ประวัติไลฟ์",team:"รายชื่อพนักงาน",admin:"Admin Panel",profile:"โปรไฟล์"};
+function switchPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("page-"+id).classList.add("active");
+  const nb=document.querySelector(`[data-p="${id}"]`);if(nb)nb.classList.add("active");
+  document.getElementById("topbar-sub").textContent=PAGE_LABELS[id]||"";
+  if(id==="home")renderHomePage();
+  if(id==="admin")renderAdminPage();
+  if(id==="history")renderHistoryPage(currentHistoryFilter);
+  if(id==="team")renderTeamPage();
+}
+
+// ── TOPBAR AVATAR ──────────────────────────────────────────────────────────
+function renderTopbarAvatar(){
+  const u=getCurrentUser();if(!u)return;
+  const wrap=document.getElementById("topbar-avatar");
+  wrap.innerHTML=u.avatar
+    ?`<img class="avatar-sm" src="${u.avatar}" onclick="switchPage('profile')"/>`
+    :`<div class="avatar-ph-sm" onclick="switchPage('profile')">${(u.name||u.id).charAt(0).toUpperCase()}</div>`;
+}
+
+// ── RECORD PAGE ────────────────────────────────────────────────────────────
+function loadRecordPage(){
+  const u=getCurrentUser();if(!u)return;
+  const d=document.getElementById("rec-date").value;
+  const rec=u.records[d]||{revenue:0,note:"",actualComm:""};
+  document.getElementById("rec-revenue").value=rec.revenue||"";
+  document.getElementById("rec-note").value=rec.note||"";
+  document.getElementById("rec-actual-comm").value=rec.actualComm||"";
+  calcDayComm();renderSessions(d);renderProofs(d);
+}
+function onDateChange(){loadRecordPage()}
+function shiftDay(n){
+  const d=new Date(document.getElementById("rec-date").value+"T00:00:00");
+  d.setDate(d.getDate()+n);
+  document.getElementById("rec-date").value=d.toISOString().slice(0,10);
+  loadRecordPage();
+}
+
+// Sessions
+function renderSessions(d){
+  const u=getCurrentUser();if(!u)return;
+  const admin=isAdmin();
+  const sessions=u.sessions[d]||[];
+  const list=document.getElementById("sessions-list");
+  if(sessions.length===0){list.innerHTML=`<div class="no-data" style="padding:16px 0">ยังไม่มีช่วงเวลาไลฟ์</div>`;return;}
+  list.innerHTML=sessions.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div class="time-badge">🕐 ${s.start} – ${s.end}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">${s.note||"ไม่มีหมายเหตุ"}</div>
+      </div>
+      ${`<button class="btn-danger" onclick="removeSession(${i})">ลบ</button>`}
+    </div>`).join("")+`<div style="height:4px"></div>`;
+}
+
+function addSession(){
+  const d=document.getElementById("rec-date").value;
+  const now=new Date();
+  const hh=String(now.getHours()).padStart(2,"0"),mm=String(now.getMinutes()).padStart(2,"0");
+  const overlay=document.createElement("div");
+  overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;display:flex;align-items:flex-end;justify-content:center";
+  overlay.innerHTML=`<div style="background:var(--bg3);border-radius:24px 24px 0 0;padding:24px 20px;width:100%;max-width:480px;padding-bottom:calc(24px + env(safe-area-inset-bottom))">
+    <div style="font-size:16px;font-weight:700;margin-bottom:18px">⏰ เพิ่มช่วงเวลาไลฟ์</div>
+    <div class="row2" style="margin-bottom:12px">
+      <div class="fg"><label class="lbl">เวลาเริ่ม</label><input class="inp" id="ss-start" type="time" value="${hh}:${mm}"/></div>
+      <div class="fg"><label class="lbl">เวลาสิ้นสุด</label><input class="inp" id="ss-end" type="time" value="${hh}:${mm}"/></div>
+    </div>
+    <div class="fg"><label class="lbl">หมายเหตุ</label><input class="inp" id="ss-note" type="text" placeholder="เช่น ไลฟ์โปรโมสินค้าใหม่"/></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn-ghost" style="flex:1" onclick="this.closest('[style]').remove()">ยกเลิก</button>
+      <button class="btn-primary" style="flex:2" onclick="confirmAddSession('${d}',this)">เพิ่มช่วงเวลา</button>
+    </div>
+  </div>`;
+  overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove()});
+  document.body.appendChild(overlay);
+}
+function confirmAddSession(d,btn){
+  const u=getCurrentUser();if(!u)return;
+  const start=document.getElementById("ss-start").value;
+  const end=document.getElementById("ss-end").value;
+  const note=document.getElementById("ss-note").value;
+  if(!u.sessions[d])u.sessions[d]=[];
+  u.sessions[d].push({start,end,note});
+  saveCurrentUser(u);
+  btn.closest("[style]").remove();
+  renderSessions(d);showToast("✅ เพิ่มช่วงเวลาแล้ว");
+}
+function removeSession(i){
+  const u=getCurrentUser();if(!u)return;
+  const d=document.getElementById("rec-date").value;
+  u.sessions[d].splice(i,1);saveCurrentUser(u);renderSessions(d);
+}
+
+// Proofs
+function handleProofUpload(e){
+  const u=getCurrentUser();if(!u)return;
+  const d=document.getElementById("rec-date").value;
+  const files=Array.from(e.target.files);if(!files.length)return;
+  if(!u.proofs[d])u.proofs[d]=[];
+  let loaded=0;
+  files.forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement("canvas");
+        const MAX=800;let w=img.width,h=img.height;
+        if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        u.proofs[d].push(canvas.toDataURL("image/jpeg",.7));
+        if(++loaded===files.length){saveCurrentUser(u);renderProofs(d);showToast(`📸 อัพโหลด ${files.length} รูปแล้ว`);}
+      };img.src=ev.target.result;
+    };reader.readAsDataURL(f);
+  });e.target.value="";
+}
+function renderProofs(d){
+  const u=getCurrentUser();if(!u)return;
+  const admin=isAdmin();
+  const proofs=u.proofs[d]||[];
+  const wrap=document.getElementById("proof-previews");
+  if(!proofs.length){wrap.innerHTML="";return;}
+  wrap.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
+    ${proofs.map((p,i)=>`<div style="position:relative">
+      <img src="${p}" style="width:100%;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border2);cursor:pointer" onclick="openLightbox('${p}')"/>
+      ${`<button onclick="removeProof(${i})" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>`}
+    </div>`).join("")}
+  </div>`;
+}
+function removeProof(i){
+  const u=getCurrentUser();if(!u)return;
+  const d=document.getElementById("rec-date").value;
+  u.proofs[d].splice(i,1);saveCurrentUser(u);renderProofs(d);
+}
+function calcDayComm(){
+  const rev=Number(document.getElementById("rec-revenue").value)||0;
+  const ttComm=Number(document.getElementById("rec-actual-comm").value)||0;
+  const el=document.getElementById("calc-comm");
+  const elTier=document.getElementById("calc-tier");
+  if(rev>0&&ttComm>0){
+    const pct=(ttComm/rev*100);
+    const pctStr=pct%1===0?pct.toFixed(0):pct.toFixed(2);
+    el.innerHTML=`${pctStr}<span style="font-size:18px">%</span>`;
+    elTier.textContent=`ยอดขาย ${fmt(rev)} ÷ ค่าคอม TikTok ${fmt(ttComm)}`;
+    el.style.color="var(--blue)";
+  } else if(rev>0&&ttComm===0){
+    el.innerHTML=`—<span style="font-size:14px">%</span>`;
+    elTier.textContent="กรอกค่าคอม TikTok เพื่อคำนวณ %";
+    el.style.color="var(--text3)";
+  } else {
+    el.innerHTML=`0<span style="font-size:18px">%</span>`;
+    elTier.textContent="กรอกยอดขายและค่าคอม TikTok เพื่อคำนวณ";
+    el.style.color="var(--text3)";
+  }
+}
+function saveRecord(){
+  const u=getCurrentUser();if(!u)return;
+  const d=document.getElementById("rec-date").value;
+  const rev=Number(document.getElementById("rec-revenue").value)||0;
+  const note=document.getElementById("rec-note").value.trim();
+  const actualCommRaw=document.getElementById("rec-actual-comm").value;
+  const actualComm=actualCommRaw!==""?Number(actualCommRaw):null;
+  u.records[d]={revenue:rev,note,actualComm,savedAt:new Date().toISOString()};
+  saveCurrentUser(u);
+  let toastMsg="💾 บันทึกแล้ว!";
+  if(rev>0&&actualComm!==null&&actualComm>0){
+    const pct=(actualComm/rev*100);
+    toastMsg=`💾 บันทึกแล้ว! คอม TikTok ${pct%1===0?pct.toFixed(0):pct.toFixed(2)}%`;
+  }
+  showToast(toastMsg);
+  renderHomePage();
+}
+
+// ── HOME ───────────────────────────────────────────────────────────────────
+let chart7d=null;
+function renderHomePage(){
+  const u=getCurrentUser();if(!u)return;
+  const today=todayStr();
+  const todayRev=u.records[today]?.revenue||0;
+  const ym=today.slice(0,7);
+  let monthRev=0;
+  Object.entries(u.records).forEach(([d,r])=>{if(d.startsWith(ym))monthRev+=r.revenue||0});
+  const totalComm=Object.values(u.records).reduce((s,r)=>{
+    const c=r.actualComm!==null&&r.actualComm!==undefined?r.actualComm:calcComm(r.revenue||0);
+    return s+c;
+  },0);
+  document.getElementById("h-today-rev").textContent=fmt(todayRev);
+  const todayRec=u.records[today];
+  const todayComm=todayRec?.actualComm!==null&&todayRec?.actualComm!==undefined?todayRec.actualComm:calcComm(todayRev);
+  document.getElementById("h-today-comm").textContent=fmt(todayComm);
+  document.getElementById("h-month-rev").textContent=fmt(monthRev);
+  document.getElementById("h-total-comm").textContent=fmt(totalComm);
+  const tier=getTier(monthRev);const nextTier=TIERS[TIERS.indexOf(tier)+1];
+  const pct=nextTier?Math.min(100,((monthRev-tier.min)/(nextTier.min-tier.min))*100):100;
+  document.getElementById("h-tier-wrap").innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div><div style="font-size:17px;font-weight:700;color:${tier.color}">${tier.emoji} ${tier.name}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Commission ${tier.rate}% · ยอดเดือนนี้ ${fmt(monthRev)}</div></div>
+      ${nextTier?`<div style="text-align:right"><div style="font-size:17px;font-weight:700;color:var(--yellow);font-family:'IBM Plex Mono',monospace">${fmt(nextTier.min-monthRev)}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">ถึง ${nextTier.emoji}${nextTier.name}(${nextTier.rate}%)</div></div>`:`<div style="color:var(--green);font-weight:700;font-size:13px">🎉 MAX TIER</div>`}
+    </div>
+    <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,${tier.color},${nextTier?.color||tier.color})"></div></div>
+    <div class="prog-lbs"><span>${fmt(tier.min)}</span><span>${Math.round(pct)}%</span><span>${nextTier?fmt(nextTier.min):"MAX"}</span></div>`;
+  const days=[];const labels=[];const vals=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const ds=d.toISOString().slice(0,10);days.push(ds);labels.push(d.toLocaleDateString("th-TH",{day:"numeric",month:"short"}));vals.push(u.records[ds]?.revenue||0);}
+  if(chart7d)chart7d.destroy();
+  chart7d=new Chart(document.getElementById("chart-7d"),{type:"bar",data:{labels,datasets:[{data:vals,backgroundColor:"rgba(255,45,85,.25)",borderColor:"#ff2d55",borderWidth:2,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{backgroundColor:"#1e293b",titleColor:"#94a3b8",bodyColor:"#f0f4ff",borderColor:"rgba(255,255,255,.1)",borderWidth:1,cornerRadius:8,padding:8,callbacks:{label:c=>" "+fmt(c.raw)}}},scales:{x:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#475569",font:{size:10}}},y:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#475569",font:{size:10},callback:v=>"฿"+(v>=1000?(v/1000)+"k":v)}}}}});
+  const recent=Object.entries(u.records).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,5);
+  const el=document.getElementById("home-recent");
+  if(!recent.length){el.innerHTML=`<div class="no-data">ยังไม่มีข้อมูล<br/>กรอกข้อมูลได้ที่หน้า "บันทึก" ✏️</div>`;return;}
+  el.innerHTML=recent.map(([d,r])=>{
+    const sessions=u.sessions[d]||[];const proofs=u.proofs[d]||[];
+    return`<div class="record-item">
+      <div class="record-header">
+        <div><div class="record-name">${dateLabel(d)}</div>${sessions.length?`<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${sessions.map(s=>`<span class="time-badge" style="font-size:10px;padding:3px 8px">🕐 ${s.start}–${s.end}</span>`).join("")}</div>`:""}</div>
+        ${proofs.length?`<img src="${proofs[0]}" class="record-thumb" onclick="openLightbox('${proofs[0]}')">`:`<div class="record-thumb-ph">📷</div>`}
+      </div>
+      <div class="record-stats">
+        <div class="stat-chip">ยอดขาย <strong>${fmt(r.revenue||0)}</strong></div>
+        <div class="stat-chip">ค่าคอม <strong style="color:var(--green)">${fmt(calcComm(r.revenue||0))}</strong></div>
+        ${r.note?`<div class="stat-chip">📝 <strong style="font-family:'Sarabun'">${r.note}</strong></div>`:""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── HISTORY ────────────────────────────────────────────────────────────────
+let currentHistoryFilter="all";
+function filterHistory(f,el){
+  currentHistoryFilter=f;
+  document.querySelectorAll("#page-history .chip").forEach(c=>c.classList.remove("active"));
+  el.classList.add("active");renderHistoryPage(f);
+}
+function renderHistoryPage(filter){
+  const u=getCurrentUser();if(!u)return;
+  const admin=isAdmin();
+  const today=new Date();const todayS=today.toISOString().slice(0,10);const ym=todayS.slice(0,7);
+  const last7=new Date(today);last7.setDate(today.getDate()-6);const last7S=last7.toISOString().slice(0,10);
+  let entries=Object.entries(u.records).sort((a,b)=>b[0].localeCompare(a[0]));
+  if(filter==="thisMonth")entries=entries.filter(([d])=>d.startsWith(ym));
+  if(filter==="last7")entries=entries.filter(([d])=>d>=last7S);
+  const list=document.getElementById("history-list");
+  if(!entries.length){list.innerHTML=`<div class="no-data">ไม่มีข้อมูลในช่วงนี้</div>`;return;}
+  list.innerHTML=entries.map(([d,r])=>{
+    const sessions=u.sessions[d]||[];const proofs=u.proofs[d]||[];const tier=getTier(r.revenue||0);
+    const calcC=calcComm(r.revenue||0);
+    const actualC=(r.actualComm!==null&&r.actualComm!==undefined&&r.actualComm!=="")? Number(r.actualComm):null;
+    const dispComm=actualC!==null?actualC:calcC;
+    return`<div class="card card-p" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="font-size:14px;font-weight:700">${dateLabel(d)}</div>
+          <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:5px">
+            ${sessions.map(s=>`<span class="time-badge">🕐 ${s.start}–${s.end}</span>`).join("")}
+            ${!sessions.length?`<span style="font-size:11px;color:var(--text3)">ไม่มีช่วงเวลา</span>`:""}
+          </div>
+        </div>
+        <span class="badge badge-ok">${tier.emoji} ${tier.name}</span>
+      </div>
+      ${proofs.length?`<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px">${proofs.map(p=>`<img src="${p}" onclick="openLightbox('${p}')" style="height:70px;width:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border2);flex-shrink:0;cursor:pointer"/>`).join("")}</div>`:""}
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="record-stats">
+          <div class="stat-chip">ยอดขาย <strong>${fmt(r.revenue||0)}</strong></div>
+          <div class="stat-chip">
+            ${actualC!==null&&r.revenue>0
+              ?`📱 TikTok <strong style="color:var(--blue)">${((actualC/r.revenue)*100)%1===0?((actualC/r.revenue)*100).toFixed(0):((actualC/r.revenue)*100).toFixed(2)}%</strong> <span style="color:var(--text3)">(${fmt(actualC)})</span>`
+              :`ค่าคอม TikTok <strong style="color:var(--text3)">—</strong>`
+            }
+          </div>
+        </div>
+        <button class="btn-danger" onclick="deleteRecord('${d}')">ลบ</button>
+      </div>
+      ${r.note?`<div style="font-size:11px;color:var(--text3);margin-top:6px">📝 ${r.note}</div>`:""}
+    </div>`;
+  }).join("");
+}
+function deleteRecord(d){
+  const u=getCurrentUser();if(!u)return;
+  delete u.records[d];saveCurrentUser(u);renderHistoryPage(currentHistoryFilter);showToast("🗑 ลบแล้ว");
+}
+
+// ── TEAM PAGE ──────────────────────────────────────────────────────────────
+let teamFilter="all";
+function filterTeam(f,el){
+  teamFilter=f;
+  document.querySelectorAll("#team-filter-chips .chip").forEach(c=>c.classList.remove("active"));
+  el.classList.add("active");renderTeamPage();
+}
+function renderTeamPage(){
+  const query=(document.getElementById("team-search")?.value||"").toLowerCase().trim();
+  const users=getUsers();
+  let list=Object.values(users).filter(u=>u.role==="user");
+  // compute stats
+  list=list.map(u=>{
+    const totalRev=Object.values(u.records||{}).reduce((s,r)=>s+(r.revenue||0),0);
+    const totalComm=Object.values(u.records||{}).reduce((s,r)=>s+calcComm(r.revenue||0),0);
+    const days=Object.keys(u.records||{}).length;
+    const tier=getTier(totalRev);
+    return{...u,totalRev,totalComm,days,tier};
+  }).sort((a,b)=>b.totalRev-a.totalRev);
+  // filter tier
+  if(teamFilter!=="all"){
+    const tierName={bronze:"Bronze",silver:"Silver",gold:"Gold",platinum:"Platinum"}[teamFilter];
+    list=list.filter(u=>u.tier.name===tierName);
+  }
+  // search
+  if(query){list=list.filter(u=>(u.name||"").toLowerCase().includes(query)||u.id.includes(query)||(u.tiktok||"").toLowerCase().includes(query));}
+  const el=document.getElementById("team-list");
+  if(!list.length){el.innerHTML=`<div class="no-data">ไม่พบพนักงาน</div>`;return;}
+  const admin=isAdmin();
+  el.innerHTML=list.map((u,rank)=>{
+    const medals=["🥇","🥈","🥉"];
+    const medal=rank<3?medals[rank]:`#${rank+1}`;
+    const ava=u.avatar?`<img class="emp-ava" src="${u.avatar}"/>`:`<div class="emp-ava-ph">${(u.name||u.id).charAt(0).toUpperCase()}</div>`;
+    return`<div class="emp-card">
+      <div style="font-size:16px;width:24px;text-align:center;flex-shrink:0">${medal}</div>
+      ${ava}
+      <div class="emp-info">
+        <div class="emp-name">${u.name||u.id}</div>
+        <div class="emp-meta">${u.id}${u.tiktok?" · "+u.tiktok:""}${u.age?" · อายุ "+u.age+" ปี":""}</div>
+        <div class="emp-meta" style="margin-top:2px">📅 ${u.days} วัน · ${u.tier.emoji} <span style="color:${u.tier.color}">${u.tier.name}</span></div>
+      </div>
+      <div class="emp-right">
+        <div class="emp-rev">${fmt(u.totalRev)}</div>
+        <div class="emp-comm">คอม ${fmt(u.totalComm)}</div>
+        ${admin?`<button class="btn-blue" style="margin-top:6px;font-size:10px;padding:4px 10px" onclick="adminEditUser('${u.id}')">✏️ แก้ไข</button>`:""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// Admin edit user record from Team page
+function adminEditUser(uid){
+  if(!isAdmin())return;
+  const users=getUsers();const u=users[uid];if(!u)return;
+  const overlay=document.createElement("div");
+  overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:flex;align-items:flex-end;justify-content:center";
+  const totalRev=Object.values(u.records||{}).reduce((s,r)=>s+(r.revenue||0),0);
+  const totalComm=calcComm(totalRev);
+  const tier=getTier(totalRev);
+  const ava=u.avatar?`<img src="${u.avatar}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--red)"/>`:`<div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--red2));display:flex;align-items:center;justify-content:center;font-size:24px">${(u.name||u.id).charAt(0)}</div>`;
+  overlay.innerHTML=`<div style="background:var(--bg3);border-radius:24px 24px 0 0;padding:24px 20px;width:100%;max-width:480px;padding-bottom:calc(24px + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div style="font-size:15px;font-weight:700;color:var(--text2)">✏️ แก้ไขข้อมูล</div>
+      <button onclick="this.closest('[style]').remove()" style="background:rgba(255,255,255,.08);border:1px solid var(--border2);color:var(--text2);border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+      ${ava}
+      <div><div style="font-size:16px;font-weight:700">${u.name||u.id}</div>
+      <div style="font-size:11px;color:var(--text3)">${u.id} · ${tier.emoji} ${tier.name}</div>
+      <div style="font-size:12px;color:var(--green);font-family:'IBM Plex Mono',monospace;margin-top:2px">${fmt(totalRev)} · คอม ${fmt(totalComm)}</div>
+      </div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">📅 เพิ่ม/แก้ไขข้อมูลรายวัน</div>
+    <div class="row2" style="margin-bottom:10px">
+      <div class="fg"><label class="lbl">วันที่</label><input class="inp" id="ae-date" type="date" value="${todayStr()}"/></div>
+      <div class="fg"><label class="lbl">ยอดขาย (฿)</label><input class="inp" id="ae-rev" type="number" inputmode="numeric" placeholder="0"/></div>
+    </div>
+    <div class="fg"><label class="lbl">หมายเหตุ</label><input class="inp" id="ae-note" type="text" placeholder="หมายเหตุ..."/></div>
+    <div style="display:flex;gap:10px;margin-top:4px margin-bottom:16px">
+      <button class="btn-ghost" style="flex:1" onclick="this.closest('[style]').remove()">ปิด</button>
+      <button class="btn-primary" style="flex:2" onclick="confirmAdminEdit('${uid}',this)">💾 บันทึก</button>
+    </div>
+    <div style="height:12px"></div>
+    <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">📋 ประวัติของ ${u.name||u.id}</div>
+    <div>${Object.entries(u.records||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10).map(([d,r])=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="color:var(--text2)">${dateLabel(d)}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${fmt(r.revenue||0)}</span>
+        <button class="btn-danger" style="padding:3px 8px;font-size:10px" onclick="adminDeleteRecord('${uid}','${d}',this)">ลบ</button>
+      </div>`).join("")||`<div style="color:var(--text3);font-size:12px;text-align:center;padding:12px 0">ยังไม่มีข้อมูล</div>`}
+    </div>
+  </div>`;
+  overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove()});
+  document.body.appendChild(overlay);
+}
+function confirmAdminEdit(uid,btn){
+  const users=getUsers();const u=users[uid];if(!u)return;
+  const d=document.getElementById("ae-date").value;
+  const rev=Number(document.getElementById("ae-rev").value)||0;
+  const note=document.getElementById("ae-note").value.trim();
+  if(!d){showToast("⚠ กรุณาเลือกวันที่");return;}
+  u.records[d]={revenue:rev,note,savedAt:new Date().toISOString()};
+  saveUsers({...getUsers(),[uid]:u});
+  showToast(`✅ บันทึกข้อมูล ${u.name||uid} แล้ว`);
+  btn.closest("[style]").remove();
+  renderTeamPage();renderAdminPage();
+}
+function adminDeleteRecord(uid,d,btn){
+  const users=getUsers();const u=users[uid];if(!u)return;
+  delete u.records[d];saveUsers({...getUsers(),[uid]:u});
+  const row=btn.closest("[style*='border-bottom']");if(row)row.remove();
+  showToast("🗑 ลบข้อมูลแล้ว");renderTeamPage();renderAdminPage();
+}
+
+// ── ADMIN PAGE ─────────────────────────────────────────────────────────────
+function renderAdminPage(){
+  const u=getCurrentUser();if(!u||u.role!=="admin")return;
+  const users=getUsers();
+  const userList=Object.values(users).filter(u=>u.role==="user");
+  const ranked=userList.map(u=>{
+    const totalRev=Object.values(u.records||{}).reduce((s,r)=>s+(r.revenue||0),0);
+    const totalComm=Object.values(u.records||{}).reduce((s,r)=>s+calcComm(r.revenue||0),0);
+    const days=Object.keys(u.records||{}).length;
+    return{...u,totalRev,totalComm,days};
+  }).sort((a,b)=>b.totalRev-a.totalRev);
+  const totalAll=ranked.reduce((s,u)=>s+u.totalRev,0);
+  document.getElementById("adm-users").textContent=userList.length;
+  document.getElementById("adm-total").textContent=fmt(totalAll);
+  const rankEl=document.getElementById("admin-ranking");
+  const medals=["🥇","🥈","🥉"];
+  rankEl.innerHTML=ranked.length?ranked.map((u,i)=>{
+    const ava=u.avatar?`<img src="${u.avatar}" class="user-ava"/>`:`<div class="user-ava-ph">${(u.name||u.id).charAt(0).toUpperCase()}</div>`;
+    const tier=getTier(u.totalRev);
+    return`<div class="user-row">
+      <div style="font-size:18px;width:22px;flex-shrink:0;text-align:center">${medals[i]||`${i+1}`}</div>
+      ${ava}
+      <div class="user-info"><div class="user-name">${u.name}</div><div class="user-meta">${u.id} · ${u.days}วัน · ${tier.emoji}${tier.name}</div></div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="user-rev">${fmt(u.totalRev)}</div>
+        <div class="user-comm">คอม ${fmt(u.totalComm)}</div>
+        <button class="btn-blue" style="margin-top:4px;font-size:10px;padding:3px 10px" onclick="adminEditUser('${u.id}')">✏️ แก้ไข</button>
+      </div>
+    </div>`;
+  }).join(""):`<div class="no-data">ยังไม่มีข้อมูล</div>`;
+  // All records
+  const allRecs=[];
+  Object.values(users).forEach(u=>{
+    Object.entries(u.records||{}).forEach(([d,r])=>{
+      allRecs.push({user:u,date:d,rec:r,sessions:u.sessions?.[d]||[],proofs:u.proofs?.[d]||[]});
+    });
+  });
+  allRecs.sort((a,b)=>b.date.localeCompare(a.date));
+  const allEl=document.getElementById("admin-all-records");
+  if(!allRecs.length){allEl.innerHTML=`<div class="no-data">ยังไม่มีข้อมูล</div>`;return;}
+  allEl.innerHTML=allRecs.slice(0,30).map(({user:u,date:d,rec:r,sessions,proofs})=>{
+    const ava=u.avatar?`<img src="${u.avatar}" class="user-ava" style="width:32px;height:32px"/>`:`<div class="user-ava-ph" style="width:32px;height:32px;font-size:14px">${(u.name||u.id).charAt(0)}</div>`;
+    return`<div class="card card-p" style="margin-bottom:8px">
+      <div class="record-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          ${ava}
+          <div>
+            <div class="record-name">${u.name}</div>
+            <div style="font-size:11px;color:var(--text3)">${dateLabel(d)}</div>
+            <div style="margin-top:3px">${sessions.map(s=>`<span class="time-badge" style="font-size:10px">🕐${s.start}–${s.end}</span>`).join(" ")}</div>
+          </div>
+        </div>
+        ${proofs.length?`<img src="${proofs[0]}" class="record-thumb" onclick="openLightbox('${proofs[0]}')">`:`<div class="record-thumb-ph">📷</div>`}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <div class="record-stats">
+          <div class="stat-chip">ยอดขาย <strong>${fmt(r.revenue||0)}</strong></div>
+          <div class="stat-chip">ค่าคอม <strong style="color:var(--green)">${fmt(calcComm(r.revenue||0))}</strong></div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-blue" onclick="adminEditUser('${u.id}')">✏️</button>
+          <button class="btn-danger" onclick="adminDeleteRecord('${u.id}','${d}',this)">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("")+(allRecs.length>30?`<div style="text-align:center;color:var(--text3);font-size:12px;padding:12px 0">แสดง 30 รายการล่าสุด</div>`:"");
+}
+
+// ── PROFILE ────────────────────────────────────────────────────────────────
+function renderProfilePage(){
+  const u=getCurrentUser();if(!u)return;
+  document.getElementById("prof-name").value=u.name||"";
+  document.getElementById("prof-age").value=u.age||"";
+  document.getElementById("prof-phone").value=u.phone||"";
+  document.getElementById("prof-tiktok").value=u.tiktok||"";
+  document.getElementById("prof-name-display").textContent=u.name||u.id;
+  document.getElementById("prof-role-display").textContent=u.role==="admin"?"👑 Admin · แก้ไขข้อมูลทุกคนได้":`🎬 Streamer · ${u.id} · บันทึกข้อมูลตัวเองได้`;
+  const avaWrap=document.getElementById("profile-ava-wrap");
+  avaWrap.innerHTML=u.avatar?`<img class="profile-avatar" src="${u.avatar}"/>`:`<div class="profile-avatar-ph">${(u.name||u.id).charAt(0).toUpperCase()}</div>`;
+}
+function handleAvatarUpload(e){
+  const u=getCurrentUser();if(!u)return;
+  const f=e.target.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement("canvas");const SIZE=200;
+      canvas.width=SIZE;canvas.height=SIZE;
+      const ctx=canvas.getContext("2d");const s=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,SIZE,SIZE);
+      u.avatar=canvas.toDataURL("image/jpeg",.8);
+      saveCurrentUser(u);renderProfilePage();renderTopbarAvatar();showToast("📸 อัพเดทรูปโปรไฟล์แล้ว");
+    };img.src=ev.target.result;
+  };reader.readAsDataURL(f);
+}
+function saveProfile(){
+  const u=getCurrentUser();if(!u)return;
+  u.name=document.getElementById("prof-name").value.trim()||u.name;
+  u.age=document.getElementById("prof-age").value.trim();
+  u.phone=document.getElementById("prof-phone").value.trim();
+  u.tiktok=document.getElementById("prof-tiktok").value.trim();
+  saveCurrentUser(u);renderProfilePage();renderTopbarAvatar();renderTeamPage();showToast("✅ บันทึกโปรไฟล์แล้ว");
+}
+function changePassword(){
+  const u=getCurrentUser();if(!u)return;
+  const np=document.getElementById("prof-newpass").value;
+  const cp=document.getElementById("prof-confpass").value;
+  if(!np){showToast("⚠ กรุณาใส่รหัสผ่านใหม่");return;}
+  if(np!==cp){showToast("⚠ รหัสผ่านไม่ตรงกัน");return;}
+  if(np.length<4){showToast("⚠ รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร");return;}
+  u.pass=np;saveCurrentUser(u);
+  document.getElementById("prof-newpass").value="";document.getElementById("prof-confpass").value="";
+  showToast("🔐 เปลี่ยนรหัสผ่านแล้ว");
+}
+
+// ── LIGHTBOX & TOAST ────────────────────────────────────────────────────────
+function openLightbox(src){document.getElementById("lightbox-img").src=src;document.getElementById("lightbox").classList.add("open")}
+function closeLightbox(){document.getElementById("lightbox").classList.remove("open")}
+let toastT=null;
+function showToast(msg){
+  const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2400);
+}
+</script>
+</body>
+</html>
