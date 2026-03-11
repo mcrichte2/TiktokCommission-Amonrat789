@@ -337,6 +337,16 @@ input[type=date].date-pill::-webkit-calendar-picker-indicator{filter:invert(.6);
       <div class="kpi r"><div class="kpi-ico">👥</div><div class="kpi-lbl">ผู้ใช้งาน</div><div class="kpi-val" id="adm-users">0</div></div>
       <div class="kpi g"><div class="kpi-ico">📊</div><div class="kpi-lbl">ยอดรวมทั้งหมด</div><div class="kpi-val" id="adm-total">฿0</div></div>
     </div>
+    <div class="sec-title">💾 Backup & Restore</div>
+    <div class="card card-p">
+      <div style="font-size:12px;color:var(--text3);line-height:1.8;margin-bottom:12px">ก่อนอัพเดทเวอร์ชันใหม่ กด <strong style="color:var(--yellow)">Export</strong> สำรองข้อมูล → อัพเดทไฟล์ใหม่ → กด <strong style="color:var(--blue)">Import</strong> โหลดข้อมูลกลับ</div>
+      <div class="row2">
+        <button onclick="exportBackup()" style="background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;border:none;border-radius:var(--radius-sm);padding:13px;font-size:14px;font-weight:700;font-family:'Sarabun',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">⬇️ Export JSON</button>
+        <button onclick="document.getElementById('import-file').click()" style="background:linear-gradient(135deg,#6366f1,var(--blue));color:#fff;border:none;border-radius:var(--radius-sm);padding:13px;font-size:14px;font-weight:700;font-family:'Sarabun',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">⬆️ Import JSON</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importBackup(event)"/>
+      <div id="backup-status" style="font-size:12px;color:var(--text3);text-align:center;margin-top:8px;min-height:16px"></div>
+    </div>
     <div class="sec-title">🏆 อันดับยอดขาย</div>
     <div class="card card-p" id="admin-ranking"></div>
     <div class="sec-title">📋 รายการทั้งหมด <span style="font-size:10px;color:var(--text3)">(Admin แก้ไขได้)</span></div>
@@ -998,6 +1008,66 @@ let toastT=null;
 function showToast(msg){
   const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
   clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2400);
+}
+
+// ── BACKUP & RESTORE ────────────────────────────────────────────────────────
+function exportBackup(){
+  if(!isAdmin()){showToast("🔒 เฉพาะ Admin เท่านั้น");return;}
+  const data=localStorage.getItem("tt_users");
+  if(!data){showToast("⚠ ไม่มีข้อมูลให้ Export");return;}
+  const now=new Date();
+  const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}`;
+  const blob=new Blob([data],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=`tt_backup_${stamp}.json`;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  const users=JSON.parse(data);
+  const count=Object.keys(users).length;
+  document.getElementById("backup-status").textContent=`✅ Export สำเร็จ — ${count} accounts · ${stamp}`;
+  showToast("⬇️ Export สำเร็จแล้ว!");
+}
+
+function importBackup(e){
+  if(!isAdmin()){showToast("🔒 เฉพาะ Admin เท่านั้น");return;}
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const raw=ev.target.result;
+      const parsed=JSON.parse(raw);
+      if(typeof parsed!=="object"||Array.isArray(parsed))throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
+      const keys=Object.keys(parsed);
+      if(keys.length===0)throw new Error("ไฟล์ว่างเปล่า");
+      const overlay=document.createElement("div");
+      overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:400;display:flex;align-items:center;justify-content:center;padding:24px";
+      overlay.innerHTML=`<div style="background:var(--bg3);border-radius:20px;padding:24px;width:100%;max-width:360px;text-align:center">
+        <div style="font-size:28px;margin-bottom:12px">⚠️</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px">ยืนยันการ Import?</div>
+        <div style="font-size:13px;color:var(--text3);line-height:1.7;margin-bottom:20px">ข้อมูลปัจจุบันจะถูก<strong style="color:var(--red)">แทนที่ทั้งหมด</strong><br/>ด้วยข้อมูลจากไฟล์ <strong style="color:var(--yellow)">${file.name}</strong><br/>(${keys.length} accounts)</div>
+        <div style="display:flex;gap:10px">
+          <button class="btn-ghost" style="flex:1" onclick="this.closest('[style]').remove()">ยกเลิก</button>
+          <button id="confirm-import-btn" style="flex:2;background:linear-gradient(135deg,#6366f1,var(--blue));color:#fff;border:none;border-radius:var(--radius-sm);padding:13px;font-size:14px;font-weight:700;font-family:'Sarabun',sans-serif;cursor:pointer">✅ Import เลย</button>
+        </div>
+      </div>`;
+      overlay.addEventListener("click",ev=>{if(ev.target===overlay)overlay.remove()});
+      document.body.appendChild(overlay);
+      document.getElementById("confirm-import-btn").addEventListener("click",()=>{
+        localStorage.setItem("tt_users",raw);
+        overlay.remove();
+        document.getElementById("backup-status").textContent=`✅ Import สำเร็จ — ${keys.length} accounts`;
+        showToast("⬆️ Import สำเร็จ! กำลัง Reload...");
+        setTimeout(()=>location.reload(),1500);
+      });
+    }catch(err){
+      document.getElementById("backup-status").textContent=`❌ Error: ${err.message}`;
+      showToast("❌ ไฟล์ไม่ถูกต้อง");
+    }
+  };
+  reader.readAsText(file);
+  e.target.value="";
+}
 }
 </script>
 </body>
