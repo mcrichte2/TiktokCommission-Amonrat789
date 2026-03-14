@@ -349,6 +349,8 @@ input[type=date].date-pill::-webkit-calendar-picker-indicator{filter:invert(.6);
     </div>
     <div class="sec-title">🏆 อันดับยอดขาย</div>
     <div class="card card-p" id="admin-ranking"></div>
+    <div class="sec-title">🕐 บันทึกล่าสุด <span style="font-size:10px;color:var(--text3)">10 รายการ</span></div>
+    <div id="admin-recent-records"></div>
     <div class="sec-title">📋 รายการทั้งหมด <span style="font-size:10px;color:var(--text3)">(Admin แก้ไขได้)</span></div>
     <div id="admin-all-records"></div>
   </div>
@@ -1154,14 +1156,41 @@ function renderAdminPage(){
       </div>
     </div>`;
   }).join(""):`<div class="no-data">ยังไม่มีข้อมูล</div>`;
-  // All records
+  // All records sorted by date
   const allRecs=[];
   Object.values(users).forEach(u=>{
     Object.entries(u.records||{}).forEach(([d,r])=>{
-      allRecs.push({user:u,date:d,rec:r,sessions:u.sessions?.[d]||[],proofs:u.proofs?.[d]||[]});
+      allRecs.push({user:u,date:d,rec:r,sessions:(u.sessions||{})[d]||[],proofs:(u.proofs||{})[d]||[]});
     });
   });
   allRecs.sort((a,b)=>b.date.localeCompare(a.date));
+
+  // Recent 10
+  const recentEl=document.getElementById("admin-recent-records");
+  if(!allRecs.length){recentEl.innerHTML=`<div class="no-data">ยังไม่มีข้อมูล</div>`;}
+  else{
+    recentEl.innerHTML=allRecs.slice(0,10).map(({user:usr,date:d,rec:r,sessions,proofs})=>{
+      const ava=usr.avatar?`<img src="${usr.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border2);flex-shrink:0"/>`:`<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--red2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${(usr.name||usr.id).charAt(0).toUpperCase()}</div>`;
+      const actualC=(r.actualComm!==null&&r.actualComm!==undefined&&r.actualComm!=="")?Number(r.actualComm):null;
+      return`<div class="card card-p" style="margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          ${ava}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700">${usr.name||usr.id} <span style="font-size:10px;color:var(--text3);font-weight:400">· ${dateLabel(d)}</span></div>
+            ${sessions.length?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:2px">${sessions.map(s=>`<span class="time-badge" style="font-size:10px;padding:2px 7px">🕐 ${s.start}–${s.end}</span>`).join("")}</div>`:""}
+          </div>
+          ${proofs.length?`<img src="${proofs[0]}" onclick="openLightbox('${proofs[0]}')" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid var(--border2);cursor:pointer;flex-shrink:0"/>`:``}
+        </div>
+        <div class="record-stats">
+          <div class="stat-chip">ยอดขาย <strong>${fmt(r.revenue||0)}</strong></div>
+          ${actualC!==null&&r.revenue>0
+            ?`<div class="stat-chip">📱 TikTok <strong style="color:var(--blue)">${((actualC/(r.revenue||1))*100)%1===0?((actualC/(r.revenue||1))*100).toFixed(0):((actualC/(r.revenue||1))*100).toFixed(2)}%</strong> <span style="color:var(--text3)">(${fmt(actualC)})</span></div>`
+            :`<div class="stat-chip" style="color:var(--text3)">ค่าคอม TikTok <strong>—</strong></div>`
+          }
+        </div>
+      </div>`;
+    }).join("");
+  }
   const allEl=document.getElementById("admin-all-records");
   if(!allRecs.length){allEl.innerHTML=`<div class="no-data">ยังไม่มีข้อมูล</div>`;return;}
   allEl.innerHTML=allRecs.slice(0,30).map(({user:u,date:d,rec:r,sessions,proofs})=>{
