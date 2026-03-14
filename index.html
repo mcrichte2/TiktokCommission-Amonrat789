@@ -247,10 +247,10 @@ input[type=date].date-pill::-webkit-calendar-picker-indicator{filter:invert(.6);
   <!-- HOME -->
   <div class="page active" id="page-home">
     <div class="kpi-grid">
-      <div class="kpi r fu"><div class="kpi-ico">💰</div><div class="kpi-lbl">ยอดขายวันนี้</div><div class="kpi-val" id="h-today-rev">฿0</div></div>
-      <div class="kpi b fu d1"><div class="kpi-ico">🏆</div><div class="kpi-lbl">ค่าคอมวันนี้</div><div class="kpi-val" id="h-today-comm">฿0</div></div>
-      <div class="kpi g fu d2"><div class="kpi-ico">📅</div><div class="kpi-lbl">ยอดรวมเดือนนี้</div><div class="kpi-val" id="h-month-rev">฿0</div></div>
-      <div class="kpi y fu d3"><div class="kpi-ico">🎯</div><div class="kpi-lbl">ค่าคอมสะสม</div><div class="kpi-val" id="h-total-comm">฿0</div></div>
+      <div class="kpi r fu"><div class="kpi-ico">💰</div><div class="kpi-lbl" id="lbl-today-rev">ยอดขายวันนี้</div><div class="kpi-val" id="h-today-rev">฿0</div></div>
+      <div class="kpi b fu d1"><div class="kpi-ico">🏆</div><div class="kpi-lbl" id="lbl-today-comm">ค่าคอมวันนี้</div><div class="kpi-val" id="h-today-comm">฿0</div></div>
+      <div class="kpi g fu d2"><div class="kpi-ico">📅</div><div class="kpi-lbl" id="lbl-month-rev">ยอดรวมเดือนนี้</div><div class="kpi-val" id="h-month-rev">฿0</div></div>
+      <div class="kpi y fu d3"><div class="kpi-ico">🎯</div><div class="kpi-lbl" id="lbl-total-comm">ค่าคอมสะสม</div><div class="kpi-val" id="h-total-comm">฿0</div></div>
     </div>
     <div class="tier-bar-wrap fu d4" id="h-tier-wrap"></div>
     <div class="sec-title">📊 ยอดขาย 7 วันล่าสุด</div>
@@ -459,23 +459,32 @@ function saveUsers(users){
 
 // Save single user to Firebase
 function saveCurrentUser(u){
+  // Ensure sub-objects always exist
+  if(!u.records)u.records={};
+  if(!u.sessions)u.sessions={};
+  if(!u.proofs)u.proofs={};
   _usersCache[u.id]=u;
   return db.ref("users/"+u.id).set(u);
 }
 
 // Listen to realtime changes from Firebase
+// Listen to other users only — current user saves directly via saveCurrentUser
 function startRealtimeSync(){
+  const uid=_currentUid;
+  // Listen to all users for admin views (team, ranking, etc)
   db.ref("users").on("value",snap=>{
     const data=snap.val();
     if(!data)return;
-    _usersCache=data;
-    // Re-render current pages with fresh data
+    // Only update OTHER users in cache, never overwrite current user
+    Object.entries(data).forEach(([id,val])=>{
+      if(id!==uid) _usersCache[id]=val;
+    });
     const u=getCurrentUser();
     if(!u)return;
-    renderHomePage();
-    renderTopbarAvatar();
     if(isAdmin())renderAdminPage();
     renderTeamPage();
+    renderHomePage();
+    renderTopbarAvatar();
   });
 }
 
@@ -678,16 +687,22 @@ function confirmAddSession(d){
   const start=document.getElementById("ss-start").value;
   const end=document.getElementById("ss-end").value;
   const note=document.getElementById("ss-note").value;
+  if(!start||!end){showToast("⚠ กรุณาใส่เวลาให้ครบ");return;}
+  if(!u.sessions)u.sessions={};
   if(!u.sessions[d])u.sessions[d]=[];
-  u.sessions[d].push({start,end,note});
-  saveCurrentUser(u);
-  document.getElementById("add-session-overlay")?.remove();
-  renderSessions(d);showToast("✅ เพิ่มช่วงเวลาแล้ว");
+  u.sessions[d].push({start,end,note:note||""});
+  saveCurrentUser(u).then(()=>{
+    document.getElementById("add-session-overlay")?.remove();
+    renderSessions(d);
+    showToast("✅ เพิ่มช่วงเวลาแล้ว");
+  }).catch(()=>showToast("❌ บันทึกไม่สำเร็จ ลองใหม่"));
 }
 function removeSession(i){
   const u=getCurrentUser();if(!u)return;
   const d=document.getElementById("rec-date").value;
-  u.sessions[d].splice(i,1);saveCurrentUser(u);renderSessions(d);
+  if(!u.sessions||!u.sessions[d])return;
+  u.sessions[d].splice(i,1);
+  saveCurrentUser(u).then(()=>renderSessions(d));
 }
 
 // Proofs
@@ -695,6 +710,7 @@ function handleProofUpload(e){
   const u=getCurrentUser();if(!u)return;
   const d=document.getElementById("rec-date").value;
   const files=Array.from(e.target.files);if(!files.length)return;
+  if(!u.proofs)u.proofs={};
   if(!u.proofs[d])u.proofs[d]=[];
   let loaded=0;
   files.forEach(f=>{
@@ -703,12 +719,31 @@ function handleProofUpload(e){
       const img=new Image();
       img.onload=()=>{
         const canvas=document.createElement("canvas");
-        const MAX=800;let w=img.width,h=img.height;
-        if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        // Compress aggressively: max 600px, quality 0.5
+        const MAX=600;let w=img.width,h=img.height;
+        if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}
+        else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
         canvas.width=w;canvas.height=h;
         canvas.getContext("2d").drawImage(img,0,0,w,h);
-        u.proofs[d].push(canvas.toDataURL("image/jpeg",.7));
-        if(++loaded===files.length){saveCurrentUser(u);renderProofs(d);showToast(`📸 อัพโหลด ${files.length} รูปแล้ว`);}
+        const data=canvas.toDataURL("image/jpeg",.5);
+        // Warn if still too large (>500KB per image)
+        if(data.length>500000){
+          showToast("⚠ รูปใหญ่เกินไป กรุณาใช้รูปขนาดเล็กกว่านี้");
+          if(++loaded===files.length){}
+          return;
+        }
+        u.proofs[d].push(data);
+        if(++loaded===files.length){
+          saveCurrentUser(u).then(()=>{
+            renderProofs(d);
+            showToast(`📸 อัพโหลด ${u.proofs[d].length} รูปแล้ว`);
+          }).catch(e=>{
+            showToast("❌ รูปใหญ่เกินไป ลองใช้รูปเล็กกว่านี้");
+            // Remove the failed image from cache
+            u.proofs[d].pop();
+            renderProofs(d);
+          });
+        }
       };img.src=ev.target.result;
     };reader.readAsDataURL(f);
   });e.target.value="";
@@ -729,7 +764,9 @@ function renderProofs(d){
 function removeProof(i){
   const u=getCurrentUser();if(!u)return;
   const d=document.getElementById("rec-date").value;
-  u.proofs[d].splice(i,1);saveCurrentUser(u);renderProofs(d);
+  if(!u.proofs||!u.proofs[d])return;
+  u.proofs[d].splice(i,1);
+  saveCurrentUser(u).then(()=>renderProofs(d));
 }
 function calcDayComm(){
   const rev=Number(document.getElementById("rec-revenue").value)||0;
@@ -759,15 +796,25 @@ function saveRecord(){
   const note=document.getElementById("rec-note").value.trim();
   const actualCommRaw=document.getElementById("rec-actual-comm").value;
   const actualComm=actualCommRaw!==""?Number(actualCommRaw):null;
+  if(!u.records)u.records={};
   u.records[d]={revenue:rev,note,actualComm,savedAt:new Date().toISOString()};
-  saveCurrentUser(u);
-  let toastMsg="💾 บันทึกแล้ว!";
-  if(rev>0&&actualComm!==null&&actualComm>0){
-    const pct=(actualComm/rev*100);
-    toastMsg=`💾 บันทึกแล้ว! คอม TikTok ${pct%1===0?pct.toFixed(0):pct.toFixed(2)}%`;
-  }
-  showToast(toastMsg);
-  renderHomePage();
+  saveCurrentUser(u).then(()=>{
+    let toastMsg="💾 บันทึกแล้ว!";
+    if(rev>0&&actualComm!==null&&actualComm>0){
+      const pct=(actualComm/rev*100);
+      toastMsg=`💾 บันทึกแล้ว! คอม TikTok ${pct%1===0?pct.toFixed(0):pct.toFixed(2)}%`;
+    }
+    showToast(toastMsg);
+    // Clear all fields after save
+    document.getElementById("rec-revenue").value="";
+    document.getElementById("rec-note").value="";
+    document.getElementById("rec-actual-comm").value="";
+    document.getElementById("rec-date").value=todayStr();
+    calcDayComm();
+    document.getElementById("sessions-list").innerHTML=`<div class="no-data" style="padding:16px 0">ยังไม่มีช่วงเวลาไลฟ์</div>`;
+    document.getElementById("proof-previews").innerHTML="";
+    renderHomePage();
+  }).catch(()=>showToast("❌ บันทึกไม่สำเร็จ ลองใหม่"));
 }
 
 // ── HOME ───────────────────────────────────────────────────────────────────
@@ -775,26 +822,70 @@ let chart7d=null;
 function renderHomePage(){
   const u=getCurrentUser();if(!u)return;
   const today=todayStr();
-  const todayRev=u.records[today]?.revenue||0;
   const ym=today.slice(0,7);
-  let monthRev=0;
-  Object.entries(u.records).forEach(([d,r])=>{if(d.startsWith(ym))monthRev+=r.revenue||0});
-  const totalComm=Object.values(u.records).reduce((s,r)=>{
-    const c=r.actualComm!==null&&r.actualComm!==undefined?r.actualComm:calcComm(r.revenue||0);
-    return s+c;
-  },0);
+  const admin=isAdmin();
+  const allUsers=getUsers();
+
+  let todayRev=0,monthRev=0,todayComm=0,totalComm=0;
+
+  if(admin){
+    // Sum across ALL users
+    Object.values(allUsers).forEach(usr=>{
+      const recs=usr.records||{};
+      // today rev
+      todayRev+=(recs[today]?.revenue||0);
+      // today comm
+      const tr=recs[today];
+      if(tr){
+        const tc=(tr.actualComm!==null&&tr.actualComm!==undefined&&tr.actualComm!=="")?Number(tr.actualComm):0;
+        todayComm+=tc;
+      }
+      // month rev
+      Object.entries(recs).forEach(([d,r])=>{if(d.startsWith(ym))monthRev+=(r.revenue||0);});
+      // total comm
+      Object.values(recs).forEach(r=>{
+        const c=(r.actualComm!==null&&r.actualComm!==undefined&&r.actualComm!=="")?Number(r.actualComm):0;
+        totalComm+=c;
+      });
+    });
+  } else {
+    // Own data only
+    const recs=u.records||{};
+    todayRev=recs[today]?.revenue||0;
+    const tr=recs[today];
+    if(tr) todayComm=(tr.actualComm!==null&&tr.actualComm!==undefined&&tr.actualComm!=="")?Number(tr.actualComm):0;
+    Object.entries(recs).forEach(([d,r])=>{if(d.startsWith(ym))monthRev+=(r.revenue||0);});
+    Object.values(recs).forEach(r=>{
+      const c=(r.actualComm!==null&&r.actualComm!==undefined&&r.actualComm!=="")?Number(r.actualComm):0;
+      totalComm+=c;
+    });
+  }
+
   document.getElementById("h-today-rev").textContent=fmt(todayRev);
-  const todayRec=u.records[today];
-  const todayComm=todayRec?.actualComm!==null&&todayRec?.actualComm!==undefined?todayRec.actualComm:calcComm(todayRev);
   document.getElementById("h-today-comm").textContent=fmt(todayComm);
   document.getElementById("h-month-rev").textContent=fmt(monthRev);
   document.getElementById("h-total-comm").textContent=fmt(totalComm);
-  const tier=getTier(monthRev);const nextTier=TIERS[TIERS.indexOf(tier)+1];
-  const pct=nextTier?Math.min(100,((monthRev-tier.min)/(nextTier.min-tier.min))*100):100;
+  // Update labels
+  if(admin){
+    document.getElementById("lbl-today-rev").textContent="ยอดขายวันนี้ (ทุกคน)";
+    document.getElementById("lbl-today-comm").textContent="ค่าคอมวันนี้ (ทุกคน)";
+    document.getElementById("lbl-month-rev").textContent="ยอดรวมเดือนนี้ (ทุกคน)";
+    document.getElementById("lbl-total-comm").textContent="ค่าคอมสะสม (ทุกคน)";
+  } else {
+    document.getElementById("lbl-today-rev").textContent="ยอดขายวันนี้";
+    document.getElementById("lbl-today-comm").textContent="ค่าคอมวันนี้";
+    document.getElementById("lbl-month-rev").textContent="ยอดรวมเดือนนี้";
+    document.getElementById("lbl-total-comm").textContent="ค่าคอมสะสม";
+  }
+
+  // Tier bar — use current user's own month rev (not total)
+  const myMonthRev=Object.entries(u.records||{}).reduce((s,[d,r])=>d.startsWith(ym)?s+(r.revenue||0):s,0);
+  const tier=getTier(myMonthRev);const nextTier=TIERS[TIERS.indexOf(tier)+1];
+  const pct=nextTier?Math.min(100,((myMonthRev-tier.min)/(nextTier.min-tier.min))*100):100;
   document.getElementById("h-tier-wrap").innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-      <div><div style="font-size:17px;font-weight:700;color:${tier.color}">${tier.emoji} ${tier.name}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Commission ${tier.rate}% · ยอดเดือนนี้ ${fmt(monthRev)}</div></div>
-      ${nextTier?`<div style="text-align:right"><div style="font-size:17px;font-weight:700;color:var(--yellow);font-family:'IBM Plex Mono',monospace">${fmt(nextTier.min-monthRev)}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">ถึง ${nextTier.emoji}${nextTier.name}(${nextTier.rate}%)</div></div>`:`<div style="color:var(--green);font-weight:700;font-size:13px">🎉 MAX TIER</div>`}
+      <div><div style="font-size:17px;font-weight:700;color:${tier.color}">${tier.emoji} ${tier.name}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Commission ${tier.rate}% · ยอดของฉันเดือนนี้ ${fmt(myMonthRev)}</div></div>
+      ${nextTier?`<div style="text-align:right"><div style="font-size:17px;font-weight:700;color:var(--yellow);font-family:'IBM Plex Mono',monospace">${fmt(nextTier.min-myMonthRev)}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">ถึง ${nextTier.emoji}${nextTier.name}(${nextTier.rate}%)</div></div>`:`<div style="color:var(--green);font-weight:700;font-size:13px">🎉 MAX TIER</div>`}
     </div>
     <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,${tier.color},${nextTier?.color||tier.color})"></div></div>
     <div class="prog-lbs"><span>${fmt(tier.min)}</span><span>${Math.round(pct)}%</span><span>${nextTier?fmt(nextTier.min):"MAX"}</span></div>`;
@@ -802,19 +893,48 @@ function renderHomePage(){
   for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const yyyy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,"0");const dd=String(d.getDate()).padStart(2,"0");const ds=`${yyyy}-${mm}-${dd}`;labels.push(d.toLocaleDateString("th-TH",{day:"numeric",month:"short"}));vals.push(u.records[ds]?.revenue||0);}
   if(chart7d)chart7d.destroy();
   chart7d=new Chart(document.getElementById("chart-7d"),{type:"bar",data:{labels,datasets:[{data:vals,backgroundColor:"rgba(255,45,85,.25)",borderColor:"#ff2d55",borderWidth:2,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{backgroundColor:"#1e293b",titleColor:"#94a3b8",bodyColor:"#f0f4ff",borderColor:"rgba(255,255,255,.1)",borderWidth:1,cornerRadius:8,padding:8,callbacks:{label:c=>" "+fmt(c.raw)}}},scales:{x:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#475569",font:{size:10}}},y:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#475569",font:{size:10},callback:v=>"฿"+(v>=1000?(v/1000)+"k":v)}}}}});
-  const recent=Object.entries(u.records).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,5);
+  // Collect recent records from ALL users (for admin) or just self (for user)
+  let allRecent=[];
+  if(admin){
+    Object.values(allUsers).forEach(usr=>{
+      Object.entries(usr.records||{}).forEach(([d,r])=>{
+        allRecent.push({d,r,usr});
+      });
+    });
+  } else {
+    Object.entries(u.records||{}).forEach(([d,r])=>{
+      allRecent.push({d,r,usr:u});
+    });
+  }
+  allRecent.sort((a,b)=>b.d.localeCompare(a.d));
+  allRecent=allRecent.slice(0,8);
+
   const el=document.getElementById("home-recent");
-  if(!recent.length){el.innerHTML=`<div class="no-data">ยังไม่มีข้อมูล<br/>กรอกข้อมูลได้ที่หน้า "บันทึก" ✏️</div>`;return;}
-  el.innerHTML=recent.map(([d,r])=>{
-    const sessions=u.sessions[d]||[];const proofs=u.proofs[d]||[];
+  if(!allRecent.length){el.innerHTML=`<div class="no-data">ยังไม่มีข้อมูล<br/>กรอกข้อมูลได้ที่หน้า "บันทึก" ✏️</div>`;return;}
+  el.innerHTML=allRecent.map(({d,r,usr})=>{
+    const sessions=(usr.sessions||{})[d]||[];
+    const proofs=(usr.proofs||{})[d]||[];
+    const ava=usr.avatar
+      ?`<img src="${usr.avatar}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border2);flex-shrink:0"/>`
+      :`<div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--red2));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${(usr.name||usr.id).charAt(0).toUpperCase()}</div>`;
     return`<div class="record-item">
       <div class="record-header">
-        <div><div class="record-name">${dateLabel(d)}</div>${sessions.length?`<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${sessions.map(s=>`<span class="time-badge" style="font-size:10px;padding:3px 8px">🕐 ${s.start}–${s.end}</span>`).join("")}</div>`:""}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+            ${ava}
+            <span style="font-size:12px;font-weight:700;color:var(--text2)">${usr.name||usr.id}</span>
+            <span style="font-size:11px;color:var(--text3)">· ${dateLabel(d)}</span>
+          </div>
+          ${sessions.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">${sessions.map(s=>`<span class="time-badge" style="font-size:10px;padding:3px 8px">🕐 ${s.start}–${s.end}</span>`).join("")}</div>`:""}
+        </div>
         ${proofs.length?`<img src="${proofs[0]}" class="record-thumb" onclick="openLightbox('${proofs[0]}')">`:`<div class="record-thumb-ph">📷</div>`}
       </div>
       <div class="record-stats">
         <div class="stat-chip">ยอดขาย <strong>${fmt(r.revenue||0)}</strong></div>
-        <div class="stat-chip">ค่าคอม <strong style="color:var(--green)">${fmt(calcComm(r.revenue||0))}</strong></div>
+        ${(r.actualComm!==null&&r.actualComm!==undefined&&r.actualComm!=="")
+          ?`<div class="stat-chip">📱 TikTok <strong style="color:var(--blue)">${(r.actualComm/(r.revenue||1)*100)%1===0?((r.actualComm/(r.revenue||1)*100)).toFixed(0):((r.actualComm/(r.revenue||1)*100)).toFixed(2)}%</strong> <span style="color:var(--text3)">(${fmt(r.actualComm)})</span></div>`
+          :`<div class="stat-chip" style="color:var(--text3)">ค่าคอม TikTok <strong>—</strong></div>`
+        }
         ${r.note?`<div class="stat-chip">📝 <strong style="font-family:'Sarabun'">${r.note}</strong></div>`:""}
       </div>
     </div>`;
@@ -890,10 +1010,15 @@ function renderTeamPage(){
   // compute stats
   list=list.map(u=>{
     const totalRev=Object.values(u.records||{}).reduce((s,r)=>s+(r.revenue||0),0);
-    const totalComm=Object.values(u.records||{}).reduce((s,r)=>s+calcComm(r.revenue||0),0);
+    // Use actualComm (TikTok real) if available, otherwise 0
+    const totalActualComm=Object.values(u.records||{}).reduce((s,r)=>{
+      const c=(r.actualComm!==null&&r.actualComm!==undefined&&r.actualComm!=="")? Number(r.actualComm):0;
+      return s+c;
+    },0);
+    const hasActual=Object.values(u.records||{}).some(r=>r.actualComm!==null&&r.actualComm!==undefined&&r.actualComm!=="");
     const days=Object.keys(u.records||{}).length;
     const tier=getTier(totalRev);
-    return{...u,totalRev,totalComm,days,tier};
+    return{...u,totalRev,totalComm:totalActualComm,hasActual,days,tier};
   }).sort((a,b)=>b.totalRev-a.totalRev);
   // filter tier
   if(teamFilter!=="all"){
@@ -919,7 +1044,9 @@ function renderTeamPage(){
       </div>
       <div class="emp-right">
         <div class="emp-rev">${fmt(u.totalRev)}</div>
-        <div class="emp-comm">คอม ${fmt(u.totalComm)}</div>
+        <div class="emp-comm" style="color:${u.hasActual?'var(--blue)':'var(--text3)'}">
+          ${u.hasActual?`📱 คอม ${fmt(u.totalComm)}`:`ยังไม่มีค่าคอม`}
+        </div>
         ${admin?`<button class="btn-blue" style="margin-top:6px;font-size:10px;padding:4px 10px" onclick="adminEditUser('${u.id}')">✏️ แก้ไข</button>`:""}
       </div>
     </div>`;
@@ -998,9 +1125,13 @@ function renderAdminPage(){
   const userList=Object.values(users).filter(u=>u.role==="user");
   const ranked=userList.map(u=>{
     const totalRev=Object.values(u.records||{}).reduce((s,r)=>s+(r.revenue||0),0);
-    const totalComm=Object.values(u.records||{}).reduce((s,r)=>s+calcComm(r.revenue||0),0);
+    const totalComm=Object.values(u.records||{}).reduce((s,r)=>{
+      const c=(r.actualComm!==null&&r.actualComm!==undefined&&r.actualComm!=="")? Number(r.actualComm):0;
+      return s+c;
+    },0);
+    const hasActual=Object.values(u.records||{}).some(r=>r.actualComm!==null&&r.actualComm!==undefined&&r.actualComm!=="");
     const days=Object.keys(u.records||{}).length;
-    return{...u,totalRev,totalComm,days};
+    return{...u,totalRev,totalComm,hasActual,days};
   }).sort((a,b)=>b.totalRev-a.totalRev);
   const totalAll=ranked.reduce((s,u)=>s+u.totalRev,0);
   document.getElementById("adm-users").textContent=userList.length;
@@ -1016,7 +1147,9 @@ function renderAdminPage(){
       <div class="user-info"><div class="user-name">${u.name}</div><div class="user-meta">${u.id} · ${u.days}วัน · ${tier.emoji}${tier.name}</div></div>
       <div style="text-align:right;flex-shrink:0">
         <div class="user-rev">${fmt(u.totalRev)}</div>
-        <div class="user-comm">คอม ${fmt(u.totalComm)}</div>
+        <div class="user-comm" style="color:${u.hasActual?'var(--blue)':'var(--text3)'}">
+          ${u.hasActual?`📱 ${fmt(u.totalComm)}`:`ยังไม่มีค่าคอม`}
+        </div>
         <button class="btn-blue" style="margin-top:4px;font-size:10px;padding:3px 10px" onclick="adminEditUser('${u.id}')">✏️ แก้ไข</button>
       </div>
     </div>`;
@@ -1078,12 +1211,14 @@ function handleAvatarUpload(e){
   reader.onload=ev=>{
     const img=new Image();
     img.onload=()=>{
-      const canvas=document.createElement("canvas");const SIZE=200;
+      const canvas=document.createElement("canvas");const SIZE=120;
       canvas.width=SIZE;canvas.height=SIZE;
       const ctx=canvas.getContext("2d");const s=Math.min(img.width,img.height);
       ctx.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,SIZE,SIZE);
-      u.avatar=canvas.toDataURL("image/jpeg",.8);
-      saveCurrentUser(u);renderProfilePage();renderTopbarAvatar();showToast("📸 อัพเดทรูปโปรไฟล์แล้ว");
+      u.avatar=canvas.toDataURL("image/jpeg",.6);
+      saveCurrentUser(u).then(()=>{
+        renderProfilePage();renderTopbarAvatar();showToast("📸 อัพเดทรูปโปรไฟล์แล้ว");
+      }).catch(()=>showToast("❌ อัพโหลดไม่สำเร็จ ลองใหม่"));
     };img.src=ev.target.result;
   };reader.readAsDataURL(f);
 }
