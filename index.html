@@ -657,6 +657,7 @@ function addSession(){
   const hh=String(now.getHours()).padStart(2,"0"),mm=String(now.getMinutes()).padStart(2,"0");
   const overlay=document.createElement("div");
   overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;display:flex;align-items:flex-end;justify-content:center";
+  overlay.id="add-session-overlay";
   overlay.innerHTML=`<div style="background:var(--bg3);border-radius:24px 24px 0 0;padding:24px 20px;width:100%;max-width:480px;padding-bottom:calc(24px + env(safe-area-inset-bottom))">
     <div style="font-size:16px;font-weight:700;margin-bottom:18px">⏰ เพิ่มช่วงเวลาไลฟ์</div>
     <div class="row2" style="margin-bottom:12px">
@@ -665,14 +666,14 @@ function addSession(){
     </div>
     <div class="fg"><label class="lbl">หมายเหตุ</label><input class="inp" id="ss-note" type="text" placeholder="เช่น ไลฟ์โปรโมสินค้าใหม่"/></div>
     <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="btn-ghost" style="flex:1" onclick="this.closest('[style]').remove()">ยกเลิก</button>
-      <button class="btn-primary" style="flex:2" onclick="confirmAddSession('${d}',this)">เพิ่มช่วงเวลา</button>
+      <button class="btn-ghost" style="flex:1" onclick="document.getElementById('add-session-overlay').remove()">ยกเลิก</button>
+      <button class="btn-primary" style="flex:2" onclick="confirmAddSession('${d}')">เพิ่มช่วงเวลา</button>
     </div>
   </div>`;
   overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove()});
   document.body.appendChild(overlay);
 }
-function confirmAddSession(d,btn){
+function confirmAddSession(d){
   const u=getCurrentUser();if(!u)return;
   const start=document.getElementById("ss-start").value;
   const end=document.getElementById("ss-end").value;
@@ -680,7 +681,7 @@ function confirmAddSession(d,btn){
   if(!u.sessions[d])u.sessions[d]=[];
   u.sessions[d].push({start,end,note});
   saveCurrentUser(u);
-  btn.closest("[style]").remove();
+  document.getElementById("add-session-overlay")?.remove();
   renderSessions(d);showToast("✅ เพิ่มช่วงเวลาแล้ว");
 }
 function removeSession(i){
@@ -935,10 +936,11 @@ function adminEditUser(uid){
   const totalComm=calcComm(totalRev);
   const tier=getTier(totalRev);
   const ava=u.avatar?`<img src="${u.avatar}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--red)"/>`:`<div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--red2));display:flex;align-items:center;justify-content:center;font-size:24px">${(u.name||u.id).charAt(0)}</div>`;
+  overlay.id="admin-edit-overlay";
   overlay.innerHTML=`<div style="background:var(--bg3);border-radius:24px 24px 0 0;padding:24px 20px;width:100%;max-width:480px;padding-bottom:calc(24px + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <div style="font-size:15px;font-weight:700;color:var(--text2)">✏️ แก้ไขข้อมูล</div>
-      <button onclick="this.closest('[style]').remove()" style="background:rgba(255,255,255,.08);border:1px solid var(--border2);color:var(--text2);border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+      <button onclick="document.getElementById('admin-edit-overlay').remove()" style="background:rgba(255,255,255,.08);border:1px solid var(--border2);color:var(--text2);border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
       ${ava}
@@ -953,9 +955,9 @@ function adminEditUser(uid){
       <div class="fg"><label class="lbl">ยอดขาย (฿)</label><input class="inp" id="ae-rev" type="number" inputmode="numeric" placeholder="0"/></div>
     </div>
     <div class="fg"><label class="lbl">หมายเหตุ</label><input class="inp" id="ae-note" type="text" placeholder="หมายเหตุ..."/></div>
-    <div style="display:flex;gap:10px;margin-top:4px margin-bottom:16px">
-      <button class="btn-ghost" style="flex:1" onclick="this.closest('[style]').remove()">ปิด</button>
-      <button class="btn-primary" style="flex:2" onclick="confirmAdminEdit('${uid}',this)">💾 บันทึก</button>
+    <div style="display:flex;gap:10px;margin-top:16px;margin-bottom:4px">
+      <button class="btn-ghost" style="flex:1" onclick="document.getElementById('admin-edit-overlay').remove()">ปิด</button>
+      <button class="btn-primary" style="flex:2" onclick="confirmAdminEdit('${uid}')">💾 บันทึก</button>
     </div>
     <div style="height:12px"></div>
     <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">📋 ประวัติของ ${u.name||u.id}</div>
@@ -970,7 +972,7 @@ function adminEditUser(uid){
   overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove()});
   document.body.appendChild(overlay);
 }
-function confirmAdminEdit(uid,btn){
+function confirmAdminEdit(uid){
   const users=getUsers();const u=users[uid];if(!u)return;
   const d=document.getElementById("ae-date").value;
   const rev=Number(document.getElementById("ae-rev").value)||0;
@@ -979,13 +981,13 @@ function confirmAdminEdit(uid,btn){
   u.records[d]={revenue:rev,note,savedAt:new Date().toISOString()};
   saveUsers({...getUsers(),[uid]:u});
   showToast(`✅ บันทึกข้อมูล ${u.name||uid} แล้ว`);
-  btn.closest("[style]").remove();
+  document.getElementById("admin-edit-overlay")?.remove();
   renderTeamPage();renderAdminPage();
 }
 function adminDeleteRecord(uid,d,btn){
   const users=getUsers();const u=users[uid];if(!u)return;
   delete u.records[d];saveUsers({...getUsers(),[uid]:u});
-  const row=btn.closest("[style*='border-bottom']");if(row)row.remove();
+  const row=btn.closest("div");if(row)row.remove();
   showToast("🗑 ลบข้อมูลแล้ว");renderTeamPage();renderAdminPage();
 }
 
@@ -1145,12 +1147,13 @@ function importBackup(e){
       if(keys.length===0)throw new Error("ไฟล์ว่างเปล่า");
       const overlay=document.createElement("div");
       overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:400;display:flex;align-items:center;justify-content:center;padding:24px";
+      overlay.id="import-confirm-overlay";
       overlay.innerHTML=`<div style="background:var(--bg3);border-radius:20px;padding:24px;width:100%;max-width:360px;text-align:center">
         <div style="font-size:28px;margin-bottom:12px">⚠️</div>
         <div style="font-size:16px;font-weight:700;margin-bottom:8px">ยืนยันการ Import?</div>
         <div style="font-size:13px;color:var(--text3);line-height:1.7;margin-bottom:20px">ข้อมูลปัจจุบันจะถูก<strong style="color:var(--red)">แทนที่ทั้งหมด</strong><br/>ด้วยข้อมูลจากไฟล์ <strong style="color:var(--yellow)">${file.name}</strong><br/>(${keys.length} accounts)</div>
         <div style="display:flex;gap:10px">
-          <button class="btn-ghost" style="flex:1" onclick="this.closest('[style]').remove()">ยกเลิก</button>
+          <button class="btn-ghost" style="flex:1" onclick="document.getElementById('import-confirm-overlay').remove()">ยกเลิก</button>
           <button id="confirm-import-btn" style="flex:2;background:linear-gradient(135deg,#6366f1,var(--blue));color:#fff;border:none;border-radius:var(--radius-sm);padding:13px;font-size:14px;font-weight:700;font-family:'Sarabun',sans-serif;cursor:pointer">✅ Import เลย</button>
         </div>
       </div>`;
