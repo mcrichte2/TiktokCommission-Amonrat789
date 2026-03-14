@@ -9,6 +9,8 @@
 <title>TT Live Commission</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 :root{
   --bg:#07090f;--bg2:#0d1117;--bg3:#131a26;--bg4:#1a2235;
@@ -419,9 +421,63 @@ function fmt(n){return"฿"+Math.round(n).toLocaleString("th-TH")}
 function todayStr(){return new Date().toISOString().slice(0,10)}
 function dateLabel(d){return new Date(d+"T00:00:00").toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"})}
 
-// ── DATA ───────────────────────────────────────────────────────────────────
-function initUsers(){
-  if(localStorage.getItem("tt_users"))return;
+// ── FIREBASE INIT ──────────────────────────────────────────────────────────
+const firebaseConfig={
+  apiKey:"AIzaSyAzFCmnSVoTmwBvLBam-ZEBwKrnXReEuJA",
+  authDomain:"commissionamonrat789.firebaseapp.com",
+  databaseURL:"https://commissionamonrat789-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"commissionamonrat789",
+  storageBucket:"commissionamonrat789.firebasestorage.app",
+  messagingSenderId:"567645146666",
+  appId:"1:567645146666:web:79c32044bbe847ef3abd53"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+// ── DATA LAYER (Firebase) ──────────────────────────────────────────────────
+let _usersCache={};  // local cache synced from Firebase
+let _currentUid=null;
+
+function getUsers(){return _usersCache}
+function getCurrentUser(){return _currentUid?_usersCache[_currentUid]||null:null}
+function isAdmin(){const u=getCurrentUser();return u&&u.role==="admin"}
+
+// Save entire users object to Firebase
+function saveUsers(users){
+  _usersCache=users;
+  return db.ref("users").set(users);
+}
+
+// Save single user to Firebase
+function saveCurrentUser(u){
+  _usersCache[u.id]=u;
+  return db.ref("users/"+u.id).set(u);
+}
+
+// Listen to realtime changes from Firebase
+function startRealtimeSync(){
+  db.ref("users").on("value",snap=>{
+    const data=snap.val();
+    if(!data)return;
+    _usersCache=data;
+    // Re-render current pages with fresh data
+    const u=getCurrentUser();
+    if(!u)return;
+    renderHomePage();
+    renderTopbarAvatar();
+    if(isAdmin())renderAdminPage();
+    renderTeamPage();
+  });
+}
+
+// Init default users if Firebase is empty
+async function initUsersIfEmpty(){
+  const snap=await db.ref("users").get();
+  if(snap.exists()){
+    _usersCache=snap.val();
+    return;
+  }
+  // First run — create default accounts
   const users={
     admin:{id:"admin",pass:"admin123",role:"admin",name:"Admin",age:"",phone:"",tiktok:"@admin",avatar:"",records:{},sessions:{},proofs:{}}
   };
@@ -429,29 +485,43 @@ function initUsers(){
     const uid="user"+String(i).padStart(2,"0");
     users[uid]={id:uid,pass:"user123",role:"user",name:`User ${String(i).padStart(2,"0")}`,age:"",phone:"",tiktok:`@user${i}`,avatar:"",records:{},sessions:{},proofs:{}};
   }
-  localStorage.setItem("tt_users",JSON.stringify(users));
+  await db.ref("users").set(users);
+  _usersCache=users;
 }
-function getUsers(){return JSON.parse(localStorage.getItem("tt_users")||"{}")}
-function saveUsers(u){localStorage.setItem("tt_users",JSON.stringify(u))}
-function getCurrentUser(){const uid=sessionStorage.getItem("tt_uid");if(!uid)return null;return getUsers()[uid]||null}
-function saveCurrentUser(u){const users=getUsers();users[u.id]=u;saveUsers(users)}
-function isAdmin(){const u=getCurrentUser();return u&&u.role==="admin"}
-initUsers();
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
-function doLogin(){
+async function doLogin(){
   const uid=document.getElementById("li-user").value.trim().toLowerCase();
   const pass=document.getElementById("li-pass").value;
-  const u=getUsers()[uid];
-  if(!u||u.pass!==pass){document.getElementById("li-err").textContent="ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";return;}
-  document.getElementById("li-err").textContent="";
-  sessionStorage.setItem("tt_uid",uid);
-  showApp(u);
+  const errEl=document.getElementById("li-err");
+  const btn=document.querySelector(".btn-login");
+  btn.disabled=true;btn.textContent="กำลังเชื่อมต่อ...";
+  try{
+    // Fetch latest from Firebase on login
+    const snap=await db.ref("users/"+uid).get();
+    if(!snap.exists()||snap.val().pass!==pass){
+      errEl.textContent="ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+      btn.disabled=false;btn.textContent="เข้าสู่ระบบ";
+      return;
+    }
+    const u=snap.val();
+    _usersCache[uid]=u;
+    _currentUid=uid;
+    errEl.textContent="";
+    sessionStorage.setItem("tt_uid",uid);
+    showApp(u);
+    startRealtimeSync();
+  }catch(e){
+    errEl.textContent="เชื่อมต่อไม่ได้ — ตรวจสอบอินเทอร์เน็ต";
+    btn.disabled=false;btn.textContent="เข้าสู่ระบบ";
+  }
 }
 document.getElementById("li-pass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin()});
 document.getElementById("li-user").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("li-pass").focus()});
 
 function doLogout(){
+  db.ref("users").off(); // stop listening
+  _currentUid=null;_usersCache={};
   sessionStorage.removeItem("tt_uid");
   ["topbar","pages","bottom-nav"].forEach(id=>document.getElementById(id).style.display="none");
   document.getElementById("login-screen").style.display="flex";
@@ -477,9 +547,22 @@ function showApp(u){
   switchPage("home");
 }
 
-window.addEventListener("DOMContentLoaded",()=>{
-  const uid=sessionStorage.getItem("tt_uid");
-  if(uid){const u=getUsers()[uid];if(u)showApp(u);}
+// Auto-login on reload
+window.addEventListener("DOMContentLoaded",async()=>{
+  // Show loading
+  document.getElementById("li-err").textContent="🔄 กำลังเชื่อมต่อ Firebase...";
+  try{
+    await initUsersIfEmpty();
+    const uid=sessionStorage.getItem("tt_uid");
+    if(uid&&_usersCache[uid]){
+      _currentUid=uid;
+      showApp(_usersCache[uid]);
+      startRealtimeSync();
+    }
+  }catch(e){
+    document.getElementById("li-err").textContent="⚠ เชื่อมต่อ Firebase ไม่ได้";
+  }
+  document.getElementById("li-err").textContent="";
 });
 
 // ── READONLY UI ────────────────────────────────────────────────────────────
@@ -1013,18 +1096,17 @@ function showToast(msg){
 // ── BACKUP & RESTORE ────────────────────────────────────────────────────────
 function exportBackup(){
   if(!isAdmin()){showToast("🔒 เฉพาะ Admin เท่านั้น");return;}
-  const data=localStorage.getItem("tt_users");
-  if(!data){showToast("⚠ ไม่มีข้อมูลให้ Export");return;}
+  const data=_usersCache;
+  if(!data||!Object.keys(data).length){showToast("⚠ ไม่มีข้อมูลให้ Export");return;}
   const now=new Date();
   const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}`;
-  const blob=new Blob([data],{type:"application/json"});
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
   a.href=url;a.download=`tt_backup_${stamp}.json`;
   document.body.appendChild(a);a.click();
   document.body.removeChild(a);URL.revokeObjectURL(url);
-  const users=JSON.parse(data);
-  const count=Object.keys(users).length;
+  const count=Object.keys(data).length;
   document.getElementById("backup-status").textContent=`✅ Export สำเร็จ — ${count} accounts · ${stamp}`;
   showToast("⬇️ Export สำเร็จแล้ว!");
 }
@@ -1053,12 +1135,17 @@ function importBackup(e){
       </div>`;
       overlay.addEventListener("click",ev=>{if(ev.target===overlay)overlay.remove()});
       document.body.appendChild(overlay);
-      document.getElementById("confirm-import-btn").addEventListener("click",()=>{
-        localStorage.setItem("tt_users",raw);
-        overlay.remove();
-        document.getElementById("backup-status").textContent=`✅ Import สำเร็จ — ${keys.length} accounts`;
-        showToast("⬆️ Import สำเร็จ! กำลัง Reload...");
-        setTimeout(()=>location.reload(),1500);
+      document.getElementById("confirm-import-btn").addEventListener("click",async()=>{
+        try{
+          await db.ref("users").set(parsed);
+          _usersCache=parsed;
+          overlay.remove();
+          document.getElementById("backup-status").textContent=`✅ Import สำเร็จ — ${keys.length} accounts`;
+          showToast("⬆️ Import สำเร็จ! กำลัง Reload...");
+          setTimeout(()=>location.reload(),1500);
+        }catch(e){
+          showToast("❌ Import ล้มเหลว — "+e.message);
+        }
       });
     }catch(err){
       document.getElementById("backup-status").textContent=`❌ Error: ${err.message}`;
